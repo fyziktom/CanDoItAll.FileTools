@@ -1,0 +1,370 @@
+@page "/"
+@page "/browser"
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject SandboxBrowserSessionFactory SessionFactory
+@inject SandboxInteractionGateway InteractionGateway
+
+<PageTitle>File Browser Lab</PageTitle>
+
+<div class="lab-shell @(focusFrame ? "is-focus-frame" : null) @(interaction is not null ? "has-interaction" : null)"
+     data-testid="browser-lab" data-focus-frame="@focusFrame.ToString().ToLowerInvariant()">
+    <header class="lab-header">
+        <div class="lab-identity">
+            <span class="lab-mark" aria-hidden="true">FT</span>
+            <div>
+                <h1>File browser lab</h1>
+                <p>Standalone host contract and responsive surface</p>
+            </div>
+        </div>
+        <div class="lab-header__actions">
+            <a class="lab-route-link" href="/interaction">Interaction lab</a>
+            <div class="lab-health" role="status" aria-label="Sandbox status">
+                <span class="health-dot" aria-hidden="true"></span>
+                RCL connected
+            </div>
+            <button type="button"
+                    class="focus-toggle"
+                    data-testid="focus-frame-toggle"
+                    aria-pressed="@focusFrame"
+                    @onclick="ToggleFocusFrame">
+                Focus frame
+            </button>
+        </div>
+    </header>
+
+    <div class="lab-body">
+        <aside class="control-rail" aria-label="File browser scenarios">
+            <section class="control-section">
+                <p class="control-label">Scenario</p>
+                <div class="control-stack" role="group" aria-label="Data scenario">
+                    @foreach (SandboxBrowserScenario candidate in Enum.GetValues<SandboxBrowserScenario>())
+                    {
+                        string testId = $"scenario-{SandboxScenarioCatalog.GetTestId(candidate)}";
+                        <button type="button"
+                                class="rail-button @(scenario == candidate ? "is-active" : null)"
+                                data-testid="@testId"
+                                aria-pressed="@(scenario == candidate)"
+                                disabled="@changingScenario"
+                                @onclick="() => ChangeScenarioAsync(candidate)">
+                            <span>@SandboxScenarioCatalog.GetLabel(candidate)</span>
+                            <small>@SandboxScenarioCatalog.GetShortDescription(candidate)</small>
+                        </button>
+                    }
+                </div>
+            </section>
+
+            <section class="control-section control-section--inline">
+                <div>
+                    <p class="control-label">Density</p>
+                    <div class="segmented" role="group" aria-label="Display density">
+                        @foreach (FileBrowserDisplayMode candidate in Enum.GetValues<FileBrowserDisplayMode>())
+                        {
+                            string testId = $"mode-{candidate.ToString().ToLowerInvariant()}";
+                            <button type="button"
+                                    data-testid="@testId"
+                                    aria-label="@($"Use {candidate} display mode")"
+                                    aria-pressed="@(displayMode == candidate)"
+                                    class="@(displayMode == candidate ? "is-active" : null)"
+                                    @onclick="() => ChangeDisplayMode(candidate)">
+                                @candidate
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <div>
+                    <p class="control-label">Projection</p>
+                    <div class="segmented" role="group" aria-label="File projection">
+                        @foreach (FileBrowserViewMode candidate in Enum.GetValues<FileBrowserViewMode>())
+                        {
+                            string testId = $"view-{candidate.ToString().ToLowerInvariant()}";
+                            <button type="button"
+                                    data-testid="@testId"
+                                    aria-label="@($"Use {candidate} view")"
+                                    aria-pressed="@(viewMode == candidate)"
+                                    class="@(viewMode == candidate ? "is-active" : null)"
+                                    @onclick="() => ChangeViewMode(candidate)">
+                                @candidate
+                            </button>
+                        }
+                    </div>
+                </div>
+            </section>
+
+            <section class="event-log" aria-labelledby="event-log-title" data-testid="host-event-log">
+                <div class="event-log__heading">
+                    <div>
+                        <p class="control-label">Host boundary</p>
+                        <h2 id="event-log-title">Raised events</h2>
+                    </div>
+                    <span class="event-count" aria-label="@($"{events.Count} events")">@events.Count</span>
+                </div>
+                @if (events.Count == 0)
+                {
+                    <p class="event-log__empty" data-testid="event-log-empty">
+                        The host logs every request. Authorized Open creates only an in-page interaction; other actions remain inert.
+                    </p>
+                }
+                else
+                {
+                    <ol aria-live="polite">
+                        @foreach (SandboxHostEvent entry in events)
+                        {
+                            <li @key="entry.Id" data-event-kind="@entry.Kind">
+                                <time>@entry.OccurredAt.ToString("HH:mm:ss")</time>
+                                <strong>@entry.Kind</strong>
+                                <span>@entry.ItemName</span>
+                                <code>@entry.Detail</code>
+                            </li>
+                        }
+                    </ol>
+                }
+            </section>
+        </aside>
+
+        <main class="browser-workspace" aria-label="File browser preview">
+            <div class="workspace-context">
+                <div>
+                    <p class="eyebrow">@SandboxScenarioCatalog.GetEyebrow(scenario)</p>
+                    <h2>@SandboxScenarioCatalog.GetTitle(scenario)</h2>
+                </div>
+                <div class="workspace-context__detail">
+                    <p>@SandboxScenarioCatalog.GetDescription(scenario)</p>
+                    @if (scenario == SandboxBrowserScenario.LiveFileSystem)
+                    {
+                        <button type="button"
+                                data-testid="mutate-live-filesystem"
+                                @onclick="MutateLiveFileSystem">
+                            Create / update live file
+                        </button>
+                        @if (liveMutationStatus is not null)
+                        {
+                            <small role="status" data-testid="live-mutation-status">@liveMutationStatus</small>
+                        }
+                    }
+                </div>
+            </div>
+
+            <section class="floating-frame"
+                     data-testid="floating-browser-frame"
+                     data-scenario="@SandboxScenarioCatalog.GetTestId(scenario)"
+                     aria-label="Bounded floating file browser preview">
+                <header class="floating-frame__bar">
+                    <div class="window-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                    <span>Project files / floating tool window</span>
+                    @if (focusFrame)
+                    {
+                        <button type="button"
+                                class="focus-exit"
+                                data-testid="focus-frame-exit"
+                                @onclick="ToggleFocusFrame">
+                            Exit focus
+                        </button>
+                    }
+                    else
+                    {
+                        <span class="frame-size">responsive</span>
+                    }
+                </header>
+                <div class="floating-frame__content" data-testid="file-browser-host">
+                    @if (session is null)
+                    {
+                        <div class="host-loading" role="status">Preparing scenario&hellip;</div>
+                    }
+                    else
+                    {
+                        <FileBrowser @key="browserInstanceKey"
+                                     Session="session"
+                                     AriaLabel="Sandbox file browser"
+                                     DisplayMode="displayMode"
+                                     InitialViewMode="viewMode"
+                                     SearchDebounceMilliseconds="180"
+                                     SnapshotChanged="HandleSnapshotChanged"
+                                     ViewModeChanged="HandleViewModeChanged"
+                                     ItemInvoked="HandleItemInvoked"
+                                     ActionRequested="HandleActionRequested" />
+                    }
+                </div>
+                <footer class="floating-frame__status">
+                    <span data-testid="scenario-status">@SandboxScenarioCatalog.GetStatus(scenario)</span>
+                    <span>@FormatSnapshotStatus()</span>
+                </footer>
+            </section>
+        </main>
+    </div>
+    @if (interaction is not null)
+    {
+        <div class="browser-interaction-overlay" data-testid="browser-interaction-overlay">
+            <div class="browser-interaction-overlay__window">
+                <SandboxInteractionWindow @key="interaction.Id"
+                                          Selection="interaction"
+                                          Closed="CloseBrowserInteraction"
+                                          HostEvent="RecordInteractionEvent" />
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<SandboxHostEvent> events = [];
+    private IFileBrowserSession? session;
+    private FileBrowserSnapshot? latestSnapshot;
+    private SandboxBrowserScenario scenario = SandboxBrowserScenario.Healthy;
+    private FileBrowserDisplayMode displayMode = FileBrowserDisplayMode.Standard;
+    private FileBrowserViewMode viewMode = FileBrowserViewMode.List;
+    private long browserInstanceKey;
+    private long eventId;
+    private bool changingScenario;
+    private bool focusFrame;
+    private string? liveMutationStatus;
+    private SandboxInteractionSelection? interaction;
+
+    protected override void OnInitialized()
+    {
+        session = SessionFactory.Create(scenario);
+    }
+
+    private async Task ChangeScenarioAsync(SandboxBrowserScenario candidate)
+    {
+        if (changingScenario || scenario == candidate)
+        {
+            return;
+        }
+
+        changingScenario = true;
+        IFileBrowserSession? previous = session;
+        session = null;
+        latestSnapshot = null;
+        scenario = candidate;
+        events.Clear();
+        interaction = null;
+        liveMutationStatus = null;
+        browserInstanceKey++;
+        try
+        {
+            if (previous is not null)
+            {
+                await previous.DisposeAsync();
+            }
+
+            session = SessionFactory.Create(candidate);
+        }
+        finally
+        {
+            changingScenario = false;
+        }
+    }
+
+    private void ChangeDisplayMode(FileBrowserDisplayMode candidate)
+    {
+        if (displayMode != candidate)
+        {
+            displayMode = candidate;
+            browserInstanceKey++;
+        }
+    }
+
+    private void ChangeViewMode(FileBrowserViewMode candidate)
+    {
+        if (viewMode != candidate)
+        {
+            viewMode = candidate;
+            browserInstanceKey++;
+        }
+    }
+
+    private void ToggleFocusFrame() => focusFrame = !focusFrame;
+
+    private void MutateLiveFileSystem()
+    {
+        SessionFactory.MutateLiveFileSystem();
+        liveMutationStatus = "Filesystem changed outside the session · use Refresh to observe it";
+    }
+
+    private Task HandleSnapshotChanged(FileBrowserSnapshot snapshot)
+    {
+        latestSnapshot = snapshot;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleViewModeChanged(FileBrowserViewMode candidate)
+    {
+        viewMode = candidate;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleItemInvoked(FileBrowserItemInvokedEventArgs args)
+    {
+        AddEvent("ItemInvoked", args.Item.Name, args.Kind.ToString());
+        OpenAuthorizedInteraction(args.Item);
+        return Task.CompletedTask;
+    }
+
+    private Task HandleActionRequested(FileBrowserItemActionEventArgs args)
+    {
+        AddEvent("ActionRequested", args.Item.Name, args.ActionId);
+        if (string.Equals(args.ActionId, FileBrowserActionIds.Open, StringComparison.Ordinal))
+        {
+            OpenAuthorizedInteraction(args.Item);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void OpenAuthorizedInteraction(FileBrowserItem item)
+    {
+        if (InteractionGateway.TryCreateBrowserSelection(item, out SandboxInteractionSelection? memorySelection)
+            || SessionFactory.TryCreateLiveInteraction(item, out memorySelection))
+        {
+            interaction = memorySelection;
+            AddEvent("InteractionOpened", item.Name,
+                interaction!.IsLiveFileSystem ? "authorized-filesystem-read" : "authorized-memory-adapter");
+            return;
+        }
+
+        AddEvent("InteractionBlocked", item.Name, "unmapped identity remained inert");
+    }
+
+    private void CloseBrowserInteraction() => interaction = null;
+
+    private void RecordInteractionEvent(string message)
+        => AddEvent("FileInteraction", interaction?.Request.FileName ?? "closed", message);
+
+    private void AddEvent(string kind, string itemName, string detail)
+    {
+        events.Insert(0, new SandboxHostEvent(++eventId, DateTimeOffset.Now, kind, itemName, detail));
+        if (events.Count > 12)
+        {
+            events.RemoveAt(events.Count - 1);
+        }
+    }
+
+    private string FormatSnapshotStatus()
+    {
+        if (latestSnapshot is null)
+        {
+            return "Awaiting first snapshot";
+        }
+
+        string total = latestSnapshot.TotalCount.HasValue
+            ? latestSnapshot.TotalCount.Value.ToString()
+            : "?";
+        return $"{latestSnapshot.Items.Count}/{total} visible · revision {latestSnapshot.Revision}";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (session is not null)
+        {
+            await session.DisposeAsync();
+        }
+    }
+
+    private sealed record SandboxHostEvent(
+        long Id,
+        DateTimeOffset OccurredAt,
+        string Kind,
+        string ItemName,
+        string Detail);
+}

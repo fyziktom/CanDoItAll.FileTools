@@ -1,0 +1,21 @@
+@implements IFileInteractionRendererComponent
+
+<div class="sandbox-mermaid" data-testid="interaction-mermaid-view">
+    <div class="sandbox-mermaid__diagram" aria-label="Safe Mermaid renderer seam">
+        <span>Browser</span>
+        <b aria-hidden="true">&rarr;</b>
+        <span>Interaction</span>
+        <b aria-hidden="true">&rarr;</b>
+        <span>Host</span>
+    </div>
+    <div class="sandbox-mermaid__note">
+        <strong>Renderer seam</strong>
+        <span>The sandbox deliberately renders an inert preview without loading Mermaid scripts.</span>
+    </div>
+    <pre><code>@(Context.Text ?? "Mermaid source unavailable")</code></pre>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public FileInteractionRenderContext Context { get; set; } = default!;
+}

@@ -1,0 +1,148 @@
+@namespace CanDoItAll.FileTools.FileBrowser.Components
+
+<section class="@RootClass"
+         data-display-mode="@DisplayMode.ToString().ToLowerInvariant()"
+         data-view-mode="@viewMode.ToString().ToLowerInvariant()"
+         aria-label="@AriaLabel"
+         aria-busy="@snapshot.IsBusy">
+    <div class="ft-file-browser__layout @(snapshot.Sources.Count == 0 ? "has-no-sources" : null)">
+        <FileBrowserSourceNavigation Snapshot="snapshot"
+                                     DisplayMode="DisplayMode"
+                                     SourceChanged="ChangeSourceAsync" />
+
+        <div class="ft-file-browser__workspace">
+            @if (HasActiveLocation)
+            {
+                <FileBrowserToolbar Snapshot="snapshot"
+                                    SearchText="@searchText"
+                                    SearchTextChanged="ChangeSearchTextAsync"
+                                    SearchScope="searchScope"
+                                    SearchScopeChanged="ChangeSearchScopeAsync"
+                                    ViewMode="viewMode"
+                                    ViewModeChanged="ChangeViewModeAsync"
+                                    DisplayMode="DisplayMode"
+                                    IncludeDescendantsLabel="@IncludeDescendantsLabel"
+                                    CategoryChanged="ChangeCategoryAsync"
+                                    SortChanged="ChangeSortAsync"
+                                    SortDirectionReversed="ReverseSortAsync"
+                                    IncludeDescendantsChanged="ChangeIncludeDescendantsAsync"
+                                    RefreshRequested="RefreshAsync" />
+
+                <FileBrowserBreadcrumbs Snapshot="snapshot"
+                                        BackRequested="GoBackAsync"
+                                        ForwardRequested="GoForwardAsync"
+                                        UpRequested="GoUpAsync"
+                                        NavigateRequested="NavigateAsync" />
+            }
+
+        @if (snapshot.Error is not null)
+        {
+            <div class="ft-file-browser__banner ft-file-browser__banner--error" role="alert">
+                <span>@snapshot.Error.Message</span>
+                @if (snapshot.Error.IsRetryable)
+                {
+                    <button type="button" disabled="@snapshot.IsBusy" @onclick="RetryAsync">Retry</button>
+                }
+            </div>
+        }
+
+        @if (snapshot.Warnings.Count > 0)
+        {
+            <details class="ft-file-browser__warnings">
+                <summary>@snapshot.Warnings.Count provider @(snapshot.Warnings.Count == 1 ? "warning" : "warnings")</summary>
+                <ul>
+                    @for (int warningIndex = 0; warningIndex < snapshot.Warnings.Count; warningIndex++)
+                    {
+                        FileBrowserPageWarning warning = snapshot.Warnings[warningIndex];
+                        <li @key="warningIndex">@warning.Message</li>
+                    }
+                </ul>
+            </details>
+        }
+
+        <div class="ft-file-browser__results-region">
+            @if (snapshot.Sources.Count == 0)
+            {
+                <div class="ft-file-browser__state">
+                    <strong>No sources configured</strong>
+                    <span>Add at least one file source before browsing.</span>
+                </div>
+            }
+            else if (snapshot.Operation == FileBrowserOperationKind.Initializing && snapshot.Location is null)
+            {
+                <div class="ft-file-browser__state" role="status">
+                    <span class="ft-file-browser__spinner" aria-hidden="true"></span>
+                    <strong>Connecting to source</strong>
+                    <span>Loading the first folder&#8230;</span>
+                </div>
+            }
+            else if (snapshot.Location is null && snapshot.Error is null)
+            {
+                <div class="ft-file-browser__state">
+                    <strong>Source ready</strong>
+                    <span>Initialize the browser to load its first folder.</span>
+                    <button type="button" @onclick="InitializeAsync">Load files</button>
+                </div>
+            }
+            else if (snapshot.Items.Count == 0 && !snapshot.IsBusy && snapshot.Error is null)
+            {
+                <div class="ft-file-browser__state">
+                    @if (snapshot.Search is not null)
+                    {
+                        <strong>No matching items</strong>
+                        <span>Try a different term, scope, or file type.</span>
+                    }
+                    else
+                    {
+                        <strong>This folder is empty</strong>
+                        <span>No files or folders are available here.</span>
+                    }
+                </div>
+            }
+            else if (snapshot.Items.Count > 0)
+            {
+                @if (viewMode == FileBrowserViewMode.List)
+                {
+                    <FileBrowserListView Session="boundSession!"
+                                         Snapshot="snapshot"
+                                         SelectRequested="@CreateSelectCallback(toggle: false)"
+                                         ToggleSelectionRequested="@CreateSelectCallback(toggle: true)"
+                                         ActivateRequested="@CreateActivateCallback()"
+                                         SortRequested="ChangeSortAsync"
+                                         ActionRequested="@CreateActionCallback()" />
+                }
+                else
+                {
+                    <FileBrowserCardView Session="boundSession!"
+                                         Snapshot="snapshot"
+                                         SelectRequested="@CreateSelectCallback(toggle: false)"
+                                         ToggleSelectionRequested="@CreateSelectCallback(toggle: true)"
+                                         ActivateRequested="@CreateActivateCallback()"
+                                         ActionRequested="@CreateActionCallback()" />
+                }
+            }
+
+            @if (snapshot.IsBusy && snapshot.Location is not null)
+            {
+                <div class="ft-file-browser__busy-strip" role="status">
+                    <span class="ft-file-browser__spinner" aria-hidden="true"></span>
+                    @FormatOperation(snapshot.Operation)
+                </div>
+            }
+        </div>
+
+        @if (snapshot.HasMore)
+        {
+            <div class="ft-file-browser__paging">
+                <button type="button"
+                        disabled="@snapshot.IsBusy"
+                        @onclick="LoadMoreAsync">
+                    @(snapshot.Operation == FileBrowserOperationKind.LoadingMore ? "Loading more\u2026" : "Load more")
+                </button>
+            </div>
+        }
+
+            <FileBrowserStatus Snapshot="snapshot" DisplayMode="DisplayMode" />
+        </div>
+    </div>
+</section>

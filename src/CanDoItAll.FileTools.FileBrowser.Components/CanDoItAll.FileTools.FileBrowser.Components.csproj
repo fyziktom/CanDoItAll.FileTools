@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <AssemblyName>CanDoItAll.FileTools.FileBrowser.Components</AssemblyName>
+    <RootNamespace>CanDoItAll.FileTools.FileBrowser.Components</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <Description>Responsive Blazor FileBrowser components.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\CanDoItAll.FileTools.Abstractions\CanDoItAll.FileTools.Abstractions.csproj" />
+    <ProjectReference Include="..\CanDoItAll.FileTools.FileBrowser.Core\CanDoItAll.FileTools.FileBrowser.Core.csproj" />
+  </ItemGroup>
+</Project>
+

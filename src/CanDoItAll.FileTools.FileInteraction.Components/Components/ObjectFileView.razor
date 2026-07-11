@@ -1,0 +1,11 @@
+@implements IFileInteractionRendererComponent
+
+<div class="cdi-ft-object-fallback" role="status" data-testid="interaction-object-view">
+    <strong>No embedded viewer is registered for this file type.</strong>
+    <span>The host can provide an authorized open, download, or specialized interaction action.</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public FileInteractionRenderContext Context { get; set; } = default!;
+}

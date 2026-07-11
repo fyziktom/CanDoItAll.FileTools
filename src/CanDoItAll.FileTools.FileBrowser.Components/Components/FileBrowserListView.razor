@@ -1,0 +1,163 @@
+@namespace CanDoItAll.FileTools.FileBrowser.Components
+
+<div class="ft-file-browser__list-scroll" tabindex="0" aria-label="File results">
+    <table class="ft-file-browser__list">
+        <thead>
+            <tr>
+                <th scope="col" class="ft-file-browser__selection-column"><span class="ft-file-browser__sr-only">Selected</span></th>
+                <th scope="col" aria-sort="@ResolveAriaSort(FileBrowserSortField.Name)">
+                    @RenderSortControl(FileBrowserSortField.Name, "Name")
+                </th>
+                <th scope="col" class="ft-file-browser__optional-column" aria-sort="@ResolveAriaSort(FileBrowserSortField.Owner)">
+                    @RenderSortControl(FileBrowserSortField.Owner, "Owner")
+                </th>
+                <th scope="col" class="ft-file-browser__optional-column" aria-sort="@ResolveAriaSort(FileBrowserSortField.ModifiedAt)">
+                    @RenderSortControl(FileBrowserSortField.ModifiedAt, "Modified")
+                </th>
+                <th scope="col" class="ft-file-browser__optional-column" aria-sort="@ResolveAriaSort(FileBrowserSortField.Size)">
+                    @RenderSortControl(FileBrowserSortField.Size, "Size")
+                </th>
+                <th scope="col" class="ft-file-browser__optional-column" aria-sort="@ResolveAriaSort(FileBrowserSortField.Type)">
+                    @RenderSortControl(FileBrowserSortField.Type, "Type")
+                </th>
+                <th scope="col" class="ft-file-browser__actions-column"><span class="ft-file-browser__sr-only">Actions</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (FileBrowserItem item in Snapshot.Items)
+            {
+                bool selected = Snapshot.SelectedKeys.Contains(item.Key);
+                <tr @key="item.Key"
+                    class="@(selected ? "is-selected" : null)"
+                    aria-selected="@(FileBrowserInteractionPolicy.CanSelect(item) ? selected : null)"
+                    data-item-key="@item.Key.Value">
+                    <td class="ft-file-browser__selection-column">
+                        @if (FileBrowserInteractionPolicy.CanSelect(item))
+                        {
+                            <input type="checkbox"
+                                   checked="@selected"
+                                   @onchange="() => ToggleSelectionRequested.InvokeAsync(item)"
+                                   aria-label="@($"Select {item.Name}")" />
+                        }
+                    </td>
+                    <td class="ft-file-browser__name-cell">
+                        @if (FileBrowserInteractionPolicy.CanSelect(item) || FileBrowserInteractionPolicy.CanActivate(item))
+                        {
+                            <button type="button"
+                                    class="ft-file-browser__item-main"
+                                    @onclick="() => HandleMainClickAsync(item)"
+                                    @ondblclick="() => HandleDoubleClickAsync(item)"
+                                    @onkeyup="args => HandleItemKeyUpAsync(item, args)"
+                                    aria-label="@FileBrowserInteractionPolicy.BuildMainLabel(item)">
+                                <span class="ft-file-browser__item-icon" aria-hidden="true">@FileBrowserIconResolver.Resolve(item)</span>
+                                <span class="ft-file-browser__item-identity">
+                                    <span class="ft-file-browser__item-name">@item.Name</span>
+                                    @if (Snapshot.IncludeDescendants && !string.IsNullOrWhiteSpace(item.DisplayPath))
+                                    {
+                                        <span class="ft-file-browser__item-path">@item.DisplayPath</span>
+                                    }
+                                </span>
+                            </button>
+                        }
+                        else
+                        {
+                            <span class="ft-file-browser__item-main is-inert">
+                                <span class="ft-file-browser__item-icon" aria-hidden="true">@FileBrowserIconResolver.Resolve(item)</span>
+                                <span class="ft-file-browser__item-name">@item.Name</span>
+                            </span>
+                        }
+                    </td>
+                    <td class="ft-file-browser__optional-column">@(item.Owner ?? "\u2014")</td>
+                    <td class="ft-file-browser__optional-column">@FileBrowserDisplayFormatter.FormatDate(item.ModifiedAt)</td>
+                    <td class="ft-file-browser__optional-column">@(item.IsContainer ? "\u2014" : FileBrowserDisplayFormatter.FormatSize(item.Size))</td>
+                    <td class="ft-file-browser__optional-column">@FileBrowserDisplayFormatter.FormatType(item)</td>
+                    <td class="ft-file-browser__actions-column">
+                        <FileBrowserItemActions Session="Session"
+                                                Item="item"
+                                                Source="Snapshot.CurrentSource"
+                                                SnapshotRevision="Snapshot.Revision"
+                                                Disabled="Snapshot.IsBusy"
+                                                ActionRequested="ActionRequested" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public IFileBrowserSession Session { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public FileBrowserSnapshot Snapshot { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<FileBrowserItem> SelectRequested { get; set; }
+
+    [Parameter]
+    public EventCallback<FileBrowserItem> ToggleSelectionRequested { get; set; }
+
+    [Parameter]
+    public EventCallback<FileBrowserItemInvokedEventArgs> ActivateRequested { get; set; }
+
+    [Parameter]
+    public EventCallback<FileBrowserSortField> SortRequested { get; set; }
+
+    [Parameter]
+    public EventCallback<FileBrowserItemActionEventArgs> ActionRequested { get; set; }
+
+    private Task HandleMainClickAsync(FileBrowserItem item)
+        => FileBrowserInteractionPolicy.CanSelect(item)
+            ? SelectRequested.InvokeAsync(item)
+            : FileBrowserInteractionPolicy.CanActivate(item)
+                ? ActivateRequested.InvokeAsync(new FileBrowserItemInvokedEventArgs(
+                    item,
+                    FileBrowserInvocationKind.PrimaryAction))
+                : Task.CompletedTask;
+
+    private Task HandleDoubleClickAsync(FileBrowserItem item)
+        => FileBrowserInteractionPolicy.CanSelect(item)
+            && FileBrowserInteractionPolicy.CanActivate(item)
+            ? ActivateRequested.InvokeAsync(new FileBrowserItemInvokedEventArgs(item, FileBrowserInvocationKind.PointerDoubleClick))
+            : Task.CompletedTask;
+
+    private Task HandleItemKeyUpAsync(FileBrowserItem item, KeyboardEventArgs args)
+        => string.Equals(args.Key, "Enter", StringComparison.Ordinal)
+            && FileBrowserInteractionPolicy.CanSelect(item)
+            && FileBrowserInteractionPolicy.CanActivate(item)
+                ? ActivateRequested.InvokeAsync(new FileBrowserItemInvokedEventArgs(item, FileBrowserInvocationKind.Keyboard))
+                : Task.CompletedTask;
+
+    private string? ResolveAriaSort(FileBrowserSortField sortField)
+        => !CanSort(sortField) || Snapshot.Sort.Field != sortField
+            ? null
+            : Snapshot.Sort.Direction == FileBrowserSortDirection.Ascending
+                ? "ascending"
+                : "descending";
+
+    private bool CanSort(FileBrowserSortField sortField)
+        => Snapshot.CurrentSource?.SupportedSortFields.Contains(sortField) == true;
+
+    private RenderFragment RenderSortControl(FileBrowserSortField sortField, string label)
+        => builder =>
+        {
+            if (!CanSort(sortField))
+            {
+                builder.AddContent(0, label);
+                return;
+            }
+
+            builder.OpenElement(0, "button");
+            builder.AddAttribute(1, "type", "button");
+            builder.AddAttribute(2, "class", "ft-file-browser__sort-button");
+            builder.AddAttribute(3, "onclick", EventCallback.Factory.Create(this, () => SortRequested.InvokeAsync(sortField)));
+            builder.AddContent(4, label);
+            if (Snapshot.Sort.Field == sortField)
+            {
+                builder.AddContent(5, Snapshot.Sort.Direction == FileBrowserSortDirection.Ascending ? " \u2191" : " \u2193");
+            }
+
+            builder.CloseElement();
+        };
+}

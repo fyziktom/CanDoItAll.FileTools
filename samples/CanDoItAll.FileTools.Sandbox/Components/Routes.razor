@@ -1,0 +1,15 @@
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <main class="not-found" data-testid="not-found">
+                <p class="eyebrow">404 / route</p>
+                <h1>Sandbox route not found</h1>
+                <a href="/browser">Return to the file browser</a>
+            </main>
+        </LayoutView>
+    </NotFound>
+</Router>

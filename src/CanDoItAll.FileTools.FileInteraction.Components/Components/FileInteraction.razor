@@ -1,0 +1,125 @@
+@implements IAsyncDisposable
+
+<section class="cdi-ft-interaction"
+         data-state="@surface.State.ToString().ToLowerInvariant()"
+         data-mode="@surface.Mode.ToString().ToLowerInvariant()"
+         aria-label="@(string.IsNullOrWhiteSpace(AriaLabel) ? $"File interaction for {surface.Request?.FileName ?? Request?.FileName ?? "file"}" : AriaLabel.Trim())"
+         data-testid="file-interaction">
+    <header class="cdi-ft-interaction__header">
+        <div class="cdi-ft-interaction__identity">
+            <span class="cdi-ft-interaction__eyebrow">File interaction</span>
+            <strong title="@surface.Request?.FileName">@(surface.Request?.FileName ?? Request?.FileName ?? "File")</strong>
+        </div>
+
+        <div class="cdi-ft-interaction__modes" role="group" aria-label="Interaction mode">
+            <button type="button"
+                    aria-pressed="@(surface.Mode == FileInteractionMode.View ? "true" : "false")"
+                    disabled="@(!CanUseMode(FileInteractionMode.View))"
+                    data-testid="interaction-mode-view"
+                    @onclick="() => ChangeModeAsync(FileInteractionMode.View)">View</button>
+            <button type="button"
+                    aria-pressed="@(surface.Mode == FileInteractionMode.Edit ? "true" : "false")"
+                    disabled="@(!CanUseMode(FileInteractionMode.Edit))"
+                    data-testid="interaction-mode-edit"
+                    @onclick="() => ChangeModeAsync(FileInteractionMode.Edit)">Edit</button>
+            <button type="button"
+                    aria-pressed="@(surface.Mode == FileInteractionMode.Diff ? "true" : "false")"
+                    disabled="@(!CanUseMode(FileInteractionMode.Diff))"
+                    title="A diff renderer can be registered by an optional package or host."
+                    data-testid="interaction-mode-diff"
+                    @onclick="() => ChangeModeAsync(FileInteractionMode.Diff)">Diff</button>
+        </div>
+
+        @if (surface.Mode == FileInteractionMode.Edit && editing is not null)
+        {
+            <div class="cdi-ft-interaction__edit-tools" aria-label="Editing actions">
+                <button type="button" disabled="@(!editing.CanUndo)"
+                        data-testid="interaction-undo" @onclick="editCommands.UndoAsync">Undo</button>
+                <button type="button" disabled="@(!editing.CanRedo)"
+                        data-testid="interaction-redo" @onclick="editCommands.RedoAsync">Redo</button>
+                <button type="button" disabled="@(editing.Preview is null)"
+                        aria-pressed="@(showPreview ? "true" : "false")"
+                        data-testid="interaction-preview-toggle"
+                        @onclick="TogglePreview">Preview</button>
+                <button type="button" class="cdi-ft-interaction__save"
+                        disabled="@(!saveUi.CanSave(editing, SaveRequested.HasDelegate))"
+                        data-testid="interaction-save" @onclick="editCommands.SaveAsync">Save</button>
+            </div>
+        }
+
+        <div class="cdi-ft-interaction__status" role="status" aria-live="polite"
+             data-testid="interaction-save-status">@saveUi.Status(editing, SaveRequested.HasDelegate, surface.Mode)</div>
+    </header>
+
+    @if (surface.State == FileInteractionLoadState.Loading)
+    {
+        <div class="cdi-ft-interaction__state" role="status" data-testid="interaction-loading">
+            <span class="cdi-ft-interaction__spinner" aria-hidden="true"></span>
+            <strong>Loading file</strong>
+            <span>Preparing a bounded content view…</span>
+        </div>
+    }
+    else if (surface.State == FileInteractionLoadState.Unsupported)
+    {
+        <div class="cdi-ft-interaction__state" role="status" data-testid="interaction-unsupported">
+            <strong>@(surface.Mode == FileInteractionMode.Diff ? "Diff is not available" : "This interaction is not available")</strong>
+            <span>@surface.ResolutionMessage</span>
+        </div>
+    }
+    else if (surface.State == FileInteractionLoadState.Error)
+    {
+        <div class="cdi-ft-interaction__state cdi-ft-interaction__state--error" role="alert"
+             data-testid="interaction-error">
+            <strong>Unable to prepare this file</strong>
+            <span>@surface.ErrorMessage</span>
+            <button type="button" data-testid="interaction-retry" @onclick="ReloadFromUiAsync">Retry</button>
+        </div>
+    }
+    else if (surface.State == FileInteractionLoadState.Loaded && surface.Renderer is not null)
+    {
+        @if (editUi.Error is not null)
+        {
+            <div class="cdi-ft-interaction__save-error" role="alert" data-testid="interaction-edit-error">
+                <span>@editUi.Message</span>
+            </div>
+        }
+
+        @if (saveUi.Error is not null)
+        {
+            <div class="cdi-ft-interaction__save-error" role="alert" data-testid="interaction-save-error">
+                <span>@saveUi.ErrorMessage</span>
+                @if (saveUi.Error is FileSaveConflictException conflict)
+                {
+                    <div class="cdi-ft-interaction__conflict-actions">
+                        @if (conflict.ActualRevision.HasValue)
+                        {
+                            <button type="button" data-testid="interaction-conflict-rebase"
+                                    @onclick="editCommands.RebaseConflictAsync">Retry against current revision</button>
+                        }
+                        <button type="button" data-testid="interaction-conflict-overwrite"
+                                @onclick="editCommands.OverwriteConflictAsync">Retry without revision</button>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="cdi-ft-interaction__workspace"
+             data-preview="@(showPreview && surface.Mode == FileInteractionMode.Edit && editing?.Preview is not null ? "shown" : "hidden")"
+             data-placement="@(surface.Profile?.Preview.Placement.ToString().ToLowerInvariant() ?? "beside")">
+            <section class="cdi-ft-interaction__pane" aria-label="@($"{surface.Mode} file surface")">
+                <DynamicComponent Type="surface.Renderer.ComponentType" Parameters="RendererParameters" />
+            </section>
+            @if (showPreview && surface.Mode == FileInteractionMode.Edit && editing?.Preview is { } activePreview)
+            {
+                <section class="cdi-ft-interaction__pane cdi-ft-interaction__preview"
+                         aria-label="Live preview" data-testid="interaction-preview">
+                    <div class="cdi-ft-interaction__preview-heading">
+                        <strong>Preview</strong>
+                        <span>@(activePreview.IsPending ? "Updating…" : $"Revision {activePreview.EditRevision}")</span>
+                    </div>
+                    <DynamicComponent Type="activePreview.Renderer.ComponentType" Parameters="PreviewRendererParameters" />
+                </section>
+            }
+        </div>
+    }
+</section>

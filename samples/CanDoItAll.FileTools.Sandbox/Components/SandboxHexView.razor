@@ -1,0 +1,11 @@
+@implements IFileInteractionRendererComponent
+
+<div class="sandbox-hex-view" data-testid="interaction-hex-view">
+    <span>@Context.Content.Length bytes</span>
+    <pre>@Convert.ToHexString(Context.Content.Span)</pre>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public FileInteractionRenderContext Context { get; set; } = default!;
+}

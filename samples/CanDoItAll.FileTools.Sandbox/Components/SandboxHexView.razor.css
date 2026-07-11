@@ -1,0 +1,26 @@
+.sandbox-hex-view {
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    overflow: auto;
+    align-content: start;
+    gap: .55rem;
+    padding: 1rem;
+    color: #dfe7f2;
+    background: #242624;
+}
+
+.sandbox-hex-view span {
+    color: #8fa9ce;
+    font: 700 .6rem "SFMono-Regular", Consolas, monospace;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.sandbox-hex-view pre {
+    margin: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    font: .8rem/1.7 "SFMono-Regular", Consolas, monospace;
+    letter-spacing: .12em;
+}

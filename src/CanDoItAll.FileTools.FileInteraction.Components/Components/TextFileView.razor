@@ -1,0 +1,19 @@
+@implements IFileInteractionRendererComponent
+
+@if (Context.Text is null)
+{
+    <div class="cdi-ft-text-state" role="status">Text content is unavailable.</div>
+}
+else if (Context.Text.Length == 0)
+{
+    <div class="cdi-ft-text-state" role="status" data-testid="interaction-empty-file">This file is empty.</div>
+}
+else
+{
+    <pre class="cdi-ft-text-view" data-testid="interaction-text-view">@Context.Text</pre>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public FileInteractionRenderContext Context { get; set; } = default!;
+}

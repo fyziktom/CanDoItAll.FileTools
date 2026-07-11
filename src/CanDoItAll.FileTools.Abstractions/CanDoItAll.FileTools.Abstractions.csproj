@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>CanDoItAll.FileTools.Abstractions</AssemblyName>
+    <RootNamespace>CanDoItAll.FileTools</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <Description>BCL-only contracts and value types for storage-neutral file tooling.</Description>
+  </PropertyGroup>
+</Project>
+

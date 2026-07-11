@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <AssemblyName>CanDoItAll.FileTools.FileInteraction.Markdown</AssemblyName>
+    <RootNamespace>CanDoItAll.FileTools.FileInteraction.Markdown</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <Description>Optional Markdown viewer/editor adapter for FileInteraction.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Markdig" />
+    <ProjectReference Include="..\CanDoItAll.FileTools.Abstractions\CanDoItAll.FileTools.Abstractions.csproj" />
+    <ProjectReference Include="..\CanDoItAll.FileTools.FileInteraction.Core\CanDoItAll.FileTools.FileInteraction.Core.csproj" />
+    <ProjectReference Include="..\CanDoItAll.FileTools.FileInteraction.Components\CanDoItAll.FileTools.FileInteraction.Components.csproj" />
+    <None Update="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+</Project>

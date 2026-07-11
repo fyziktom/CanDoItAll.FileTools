@@ -1,0 +1,85 @@
+@using System.Globalization
+@implements IFileInteractionRendererComponent
+
+<div class="sandbox-hex-editor" data-testid="interaction-hex-editor">
+    <div class="sandbox-hex-editor__heading">
+        <div>
+            <strong>Neutral binary editor</strong>
+            <span>Space-separated hexadecimal bytes</span>
+        </div>
+        <button type="button"
+                data-testid="interaction-hex-over-limit"
+                disabled="@(!Context.ContentChanged.HasDelegate)"
+                @onclick="RaiseOverLimitAsync">Probe bounded rejection</button>
+    </div>
+    <textarea value="@hexText"
+              aria-label="Hexadecimal file content"
+              data-testid="interaction-hex-input"
+              spellcheck="false"
+              @oninput="HandleInputAsync"></textarea>
+    <div class="sandbox-hex-editor__status" role="status">
+        <span>@Context.Content.Length bytes · limit @Context.MaximumContentBytes</span>
+        @if (parseError is not null)
+        {
+            <strong>@parseError</strong>
+        }
+        else
+        {
+            <span>ContentChanged is awaited by the FileInteraction shell.</span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public FileInteractionRenderContext Context { get; set; } = default!;
+
+    private string hexText = string.Empty;
+    private string? parseError;
+    private long renderedRevision = -1;
+
+    protected override void OnParametersSet()
+    {
+        if (renderedRevision != Context.EditRevision)
+        {
+            renderedRevision = Context.EditRevision;
+            hexText = string.Join(' ', Context.Content.Span.ToArray().Select(value => value.ToString("X2", CultureInfo.InvariantCulture)));
+            parseError = null;
+        }
+    }
+
+    private async Task HandleInputAsync(ChangeEventArgs args)
+    {
+        hexText = args.Value?.ToString() ?? string.Empty;
+        string compact = string.Concat(hexText.Where(character => !char.IsWhiteSpace(character)));
+        if (compact.Length % 2 != 0)
+        {
+            parseError = "Each byte needs two hexadecimal digits.";
+            return;
+        }
+
+        var content = new byte[compact.Length / 2];
+        for (int index = 0; index < content.Length; index++)
+        {
+            if (!byte.TryParse(
+                    compact.AsSpan(index * 2, 2),
+                    NumberStyles.AllowHexSpecifier,
+                    CultureInfo.InvariantCulture,
+                    out content[index]))
+            {
+                parseError = "Only hexadecimal digits and whitespace are accepted.";
+                return;
+            }
+        }
+
+        parseError = null;
+        await Context.ContentChanged.InvokeAsync(new FileInteractionContentChange(
+            content,
+            Context.MediaType));
+    }
+
+    private Task RaiseOverLimitAsync()
+        => Context.ContentChanged.InvokeAsync(new FileInteractionContentChange(
+            new byte[Context.MaximumContentBytes + 1],
+            Context.MediaType));
+}

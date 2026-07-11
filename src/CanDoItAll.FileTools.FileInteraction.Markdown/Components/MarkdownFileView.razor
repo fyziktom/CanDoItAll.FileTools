@@ -1,0 +1,23 @@
+@implements IFileInteractionRendererComponent
+
+@if (Context.Text is null)
+{
+    <div class="cdi-ft-markdown__state" role="status">Markdown content is unavailable.</div>
+}
+else if (Context.Text.Length == 0)
+{
+    <div class="cdi-ft-markdown__state" role="status" data-testid="interaction-empty-markdown">
+        This Markdown file is empty.
+    </div>
+}
+else
+{
+    <article class="cdi-ft-markdown" data-testid="interaction-markdown-view">
+        @MarkdownContentRenderer.ToMarkup(Context.Text)
+    </article>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public FileInteractionRenderContext Context { get; set; } = default!;
+}

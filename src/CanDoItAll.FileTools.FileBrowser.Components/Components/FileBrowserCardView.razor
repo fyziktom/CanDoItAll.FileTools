@@ -1,0 +1,107 @@
+@namespace CanDoItAll.FileTools.FileBrowser.Components
+
+<div class="ft-file-browser__card-scroll" tabindex="0" aria-label="File results">
+    <div class="ft-file-browser__card-grid" role="list">
+        @foreach (FileBrowserItem item in Snapshot.Items)
+        {
+            bool selected = Snapshot.SelectedKeys.Contains(item.Key);
+            <article @key="item.Key"
+                     class="ft-file-browser__card @(selected ? "is-selected" : null)"
+                     role="listitem"
+                     data-item-key="@item.Key.Value">
+                @if (FileBrowserInteractionPolicy.CanSelect(item) || FileBrowserInteractionPolicy.CanActivate(item))
+                {
+                    <button type="button"
+                            class="ft-file-browser__card-main"
+                            aria-pressed="@(FileBrowserInteractionPolicy.CanSelect(item) ? selected : null)"
+                            aria-label="@FileBrowserInteractionPolicy.BuildMainLabel(item)"
+                            @onclick="() => HandleMainClickAsync(item)"
+                            @ondblclick="() => HandleDoubleClickAsync(item)"
+                            @onkeyup="args => HandleItemKeyUpAsync(item, args)">
+                        <span class="ft-file-browser__card-icon" aria-hidden="true">@FileBrowserIconResolver.Resolve(item)</span>
+                        <span class="ft-file-browser__card-name">@item.Name</span>
+                        <span class="ft-file-browser__card-meta">
+                            @FileBrowserDisplayFormatter.FormatType(item)
+                            @if (!item.IsContainer && item.Size.HasValue)
+                            {
+                                <span> &middot; @FileBrowserDisplayFormatter.FormatSize(item.Size)</span>
+                            }
+                        </span>
+                        @if (!string.IsNullOrWhiteSpace(item.DisplayPath))
+                        {
+                            <span class="ft-file-browser__card-path">@item.DisplayPath</span>
+                        }
+                    </button>
+                }
+                else
+                {
+                    <div class="ft-file-browser__card-main is-inert">
+                        <span class="ft-file-browser__card-icon" aria-hidden="true">@FileBrowserIconResolver.Resolve(item)</span>
+                        <span class="ft-file-browser__card-name">@item.Name</span>
+                    </div>
+                }
+
+                <footer class="ft-file-browser__card-footer">
+                    @if (FileBrowserInteractionPolicy.CanSelect(item))
+                    {
+                        <label>
+                            <input type="checkbox"
+                                   checked="@selected"
+                                   @onchange="() => ToggleSelectionRequested.InvokeAsync(item)"
+                                   aria-label="@($"Select {item.Name}")" />
+                            <span class="ft-file-browser__sr-only">Select @item.Name</span>
+                        </label>
+                    }
+                    <FileBrowserItemActions Session="Session"
+                                            Item="item"
+                                            Source="Snapshot.CurrentSource"
+                                            SnapshotRevision="Snapshot.Revision"
+                                            Disabled="Snapshot.IsBusy"
+                                            ActionRequested="ActionRequested" />
+                </footer>
+            </article>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public IFileBrowserSession Session { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public FileBrowserSnapshot Snapshot { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<FileBrowserItem> SelectRequested { get; set; }
+
+    [Parameter]
+    public EventCallback<FileBrowserItem> ToggleSelectionRequested { get; set; }
+
+    [Parameter]
+    public EventCallback<FileBrowserItemInvokedEventArgs> ActivateRequested { get; set; }
+
+    [Parameter]
+    public EventCallback<FileBrowserItemActionEventArgs> ActionRequested { get; set; }
+
+    private Task HandleMainClickAsync(FileBrowserItem item)
+        => FileBrowserInteractionPolicy.CanSelect(item)
+            ? SelectRequested.InvokeAsync(item)
+            : FileBrowserInteractionPolicy.CanActivate(item)
+                ? ActivateRequested.InvokeAsync(new FileBrowserItemInvokedEventArgs(
+                    item,
+                    FileBrowserInvocationKind.PrimaryAction))
+                : Task.CompletedTask;
+
+    private Task HandleDoubleClickAsync(FileBrowserItem item)
+        => FileBrowserInteractionPolicy.CanSelect(item)
+            && FileBrowserInteractionPolicy.CanActivate(item)
+            ? ActivateRequested.InvokeAsync(new FileBrowserItemInvokedEventArgs(item, FileBrowserInvocationKind.PointerDoubleClick))
+            : Task.CompletedTask;
+
+    private Task HandleItemKeyUpAsync(FileBrowserItem item, KeyboardEventArgs args)
+        => string.Equals(args.Key, "Enter", StringComparison.Ordinal)
+            && FileBrowserInteractionPolicy.CanSelect(item)
+            && FileBrowserInteractionPolicy.CanActivate(item)
+                ? ActivateRequested.InvokeAsync(new FileBrowserItemInvokedEventArgs(item, FileBrowserInvocationKind.Keyboard))
+                : Task.CompletedTask;
+}

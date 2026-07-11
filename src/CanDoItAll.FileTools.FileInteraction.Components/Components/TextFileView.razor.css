@@ -1,0 +1,22 @@
+.cdi-ft-text-view {
+    box-sizing: border-box;
+    min-block-size: 100%;
+    margin: 0;
+    padding: 1rem;
+    overflow: auto;
+    color: var(--cdi-ft-ink, #1d1d1b);
+    background: var(--cdi-ft-paper, #fbfaf7);
+    font: 0.875rem/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    tab-size: 4;
+}
+
+.cdi-ft-text-state {
+    display: grid;
+    min-block-size: 10rem;
+    place-items: center;
+    padding: 1rem;
+    color: var(--cdi-ft-muted, #686761);
+    text-align: center;
+}

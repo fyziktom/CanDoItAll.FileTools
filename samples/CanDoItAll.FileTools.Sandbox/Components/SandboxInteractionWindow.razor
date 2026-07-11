@@ -1,0 +1,236 @@
+@inject FileInteractionComponentComposition Composition
+@inject SandboxInteractionGateway Gateway
+
+<section class="sandbox-interaction-window"
+         data-testid="interaction-window"
+         data-sample="@Selection.Id"
+         data-dirty="@(state?.IsDirty == true ? "true" : "false")"
+         data-saving="@(state?.IsSaving == true ? "true" : "false")">
+    <header class="sandbox-interaction-window__bar">
+        <div class="sandbox-interaction-window__identity">
+            <span class="sandbox-interaction-window__kind">@FormatKind()</span>
+            <div>
+                <strong>@Selection.Request.FileName</strong>
+                <span>@Selection.Description</span>
+            </div>
+        </div>
+        <div class="sandbox-interaction-window__state" data-testid="interaction-host-state">
+            <span class="host-state-dot" aria-hidden="true"></span>
+            @FormatHostState()
+        </div>
+        <button type="button"
+                class="sandbox-interaction-window__close"
+                aria-label="Close file interaction"
+                data-testid="interaction-close"
+                @onclick="RequestCloseAsync">&times;</button>
+    </header>
+
+    <div class="sandbox-interaction-window__host-strip">
+        <div>
+            <span class="host-label">Host adapter</span>
+            <strong data-testid="interaction-host-event">@lastHostEvent</strong>
+        </div>
+        @if (Selection.CanInjectSaveOutcome)
+        {
+            <div class="sandbox-interaction-window__injections" aria-label="One-shot save outcomes">
+                <button type="button"
+                        data-testid="interaction-arm-failure"
+                        @onclick="() => ArmOutcomeAsync(SandboxSaveInjection.Failure)">Fail next save</button>
+                <button type="button"
+                        data-testid="interaction-arm-conflict"
+                        @onclick="() => ArmOutcomeAsync(SandboxSaveInjection.Conflict)">Conflict next save</button>
+            </div>
+        }
+        else
+        {
+            <span class="sandbox-interaction-window__read-only">
+                @(Selection.IsLiveFileSystem ? "Live filesystem · read-only" : "Viewer · no persistence")
+            </span>
+        }
+    </div>
+
+    <div class="sandbox-interaction-window__surface" data-testid="interaction-surface-host">
+        <FileInteraction @key="interactionKey"
+                         Request="activeRequest"
+                         ContentSource="Selection.ContentSource"
+                         Composition="Composition"
+                         SaveRequested="SaveCallback"
+                         ModeChanged="HandleModeChanged"
+                         StateChanged="HandleStateChangedAsync"
+                         MaximumContentBytes="SandboxInteractionGateway.MaximumFileBytes"
+                         AllowModeSwitch="@(!Selection.IsLiveFileSystem)"
+                         AriaLabel="@($"Interaction for {Selection.Request.FileName}")" />
+    </div>
+
+    @if (showCloseGuard)
+    {
+        <div class="sandbox-interaction-window__guard" role="alertdialog"
+             aria-label="Close interaction confirmation"
+             data-testid="interaction-close-guard">
+            <div>
+                <strong>@(state?.IsSaving == true ? "Save is still in progress" : "Unsaved work remains")</strong>
+                <span>@(state?.IsSaving == true
+                    ? "Wait for the awaited host save before closing this window."
+                    : "Close and discard the in-memory editing session?")</span>
+            </div>
+            <div>
+                <button type="button" data-testid="interaction-close-cancel"
+                        @onclick="CancelClose">Keep editing</button>
+                <button type="button" class="guard-discard"
+                        data-testid="interaction-close-confirm"
+                        disabled="@(state?.IsSaving == true)"
+                        @onclick="ConfirmCloseAsync">Discard and close</button>
+            </div>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public SandboxInteractionSelection Selection { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback Closed { get; set; }
+
+    [Parameter]
+    public EventCallback<string> HostEvent { get; set; }
+
+    [Parameter]
+    public EventCallback<FileInteractionState> InteractionStateChanged { get; set; }
+
+    private FileInteractionState? state;
+    private FileInteractionRequest activeRequest = default!;
+    private SandboxInteractionSelection? activeSelection;
+    private long interactionKey;
+    private string lastHostEvent = "Waiting for FileInteraction state";
+    private bool showCloseGuard;
+
+    private EventCallback<FileInteractionSaveRequestedEventArgs> SaveCallback
+        => Selection.CanPersist
+            ? EventCallback.Factory.Create<FileInteractionSaveRequestedEventArgs>(this, HandleSaveRequestedAsync)
+            : default;
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(activeSelection, Selection))
+        {
+            activeSelection = Selection;
+            interactionKey++;
+            activeRequest = Selection.Request;
+            state = null;
+            showCloseGuard = false;
+            lastHostEvent = "Opening bounded content";
+        }
+    }
+
+    private async Task HandleSaveRequestedAsync(FileInteractionSaveRequestedEventArgs args)
+    {
+        string kind = args.Request.IsAutomatic ? "automatic" : "manual";
+        await ReportAsync($"Awaiting {kind} save · edit {args.Request.EditRevision}");
+        try
+        {
+            FileContentRevision revision = await Gateway.SaveAsync(args.Request);
+            args.SetPersistedRevision(revision);
+            await ReportAsync($"Persisted {kind} save · {revision.Value}");
+        }
+        catch (Exception exception)
+        {
+            await ReportAsync($"Rejected {kind} save · {exception.GetType().Name}");
+            throw;
+        }
+    }
+
+    private async Task HandleStateChangedAsync(FileInteractionState next)
+    {
+        state = next;
+        if (showCloseGuard && !next.IsDirty && !next.IsSaving && !next.HasConflict)
+        {
+            showCloseGuard = false;
+        }
+
+        if (activeRequest.Mode != next.Mode)
+        {
+            activeRequest = WithMode(activeRequest, next.Mode);
+        }
+
+        await InteractionStateChanged.InvokeAsync(next);
+    }
+
+    private void HandleModeChanged(FileInteractionMode mode)
+        => activeRequest = WithMode(activeRequest, mode);
+
+    private async Task ArmOutcomeAsync(SandboxSaveInjection injection)
+    {
+        Gateway.ArmSaveOutcome(Selection.Request.File, injection);
+        await ReportAsync(injection == SandboxSaveInjection.Failure
+            ? "One-shot failure armed"
+            : "One-shot conflict armed");
+    }
+
+    private async Task RequestCloseAsync()
+    {
+        if (state is { IsDirty: true } or { IsSaving: true } or { HasConflict: true })
+        {
+            showCloseGuard = true;
+            await ReportAsync("Close guarded by interaction state");
+            return;
+        }
+
+        await Closed.InvokeAsync();
+    }
+
+    private void CancelClose() => showCloseGuard = false;
+
+    private async Task ConfirmCloseAsync()
+    {
+        if (state?.IsSaving != true)
+        {
+            await Closed.InvokeAsync();
+        }
+    }
+
+    private async Task ReportAsync(string message)
+    {
+        lastHostEvent = message;
+        await HostEvent.InvokeAsync(message);
+    }
+
+    private string FormatKind()
+        => Selection.IsLiveFileSystem ? "FS" : Selection.CanPersist ? "RW" : "RO";
+
+    private string FormatHostState()
+    {
+        if (state is null)
+        {
+            return "Loading";
+        }
+
+        if (state.IsSaving)
+        {
+            return "Saving";
+        }
+
+        if (state.HasConflict)
+        {
+            return "Conflict";
+        }
+
+        if (state.IsDirty)
+        {
+            return "Dirty";
+        }
+
+        return state.Lifecycle.ToString();
+    }
+
+    private static FileInteractionRequest WithMode(
+        FileInteractionRequest request,
+        FileInteractionMode mode)
+        => new(
+            request.File,
+            request.FileName,
+            mode,
+            request.MediaType,
+            request.Size,
+            request.ContentRevision);
+}

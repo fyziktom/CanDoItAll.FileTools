@@ -1,0 +1,191 @@
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (Kind == FileObjectViewKind.Image)
+{
+    <div class="cdi-ft-object-surface cdi-ft-object-surface--image"
+         hidden="@(Context.IsEmpty || interopError is not null || !isReady)"
+         aria-hidden="@(Context.IsEmpty || interopError is not null || !isReady)"
+         data-testid="interaction-image-view">
+        <img @key="previousStamp"
+             @ref="target"
+             alt="@Context.Request.FileName"
+             @onload="HandleTargetLoaded"
+             @onerror="HandleTargetError" />
+    </div>
+}
+else
+{
+    <div class="cdi-ft-object-surface"
+         hidden="@(Context.IsEmpty || interopError is not null || !isReady)"
+         aria-hidden="@(Context.IsEmpty || interopError is not null || !isReady)"
+         data-testid="interaction-pdf-view">
+        <object @key="previousStamp"
+                @ref="target"
+                type="@EffectiveMediaType"
+                aria-label="@Context.Request.FileName"
+                @onload="HandleTargetLoaded"
+                @onerror="HandleTargetError">
+            <div class="cdi-ft-object-state">
+                This browser cannot display the file. Use a host-provided action to open or download it.
+            </div>
+        </object>
+    </div>
+}
+
+@if (Context.IsEmpty)
+{
+    <div class="cdi-ft-object-state" role="status" data-testid="interaction-empty-file">This file is empty.</div>
+}
+else if (interopError is not null)
+{
+    <div class="cdi-ft-object-state" role="status" data-testid="interaction-object-fallback">
+        This browser could not prepare the file preview. Use a host-provided action to open or download it.
+    </div>
+}
+@code {
+    [Parameter, EditorRequired]
+    public FileInteractionRenderContext Context { get; set; } = default!;
+
+    [Parameter]
+    public FileObjectViewKind Kind { get; set; }
+
+    private ElementReference target;
+    private ElementReference activeTarget;
+    private FileObjectUrlInterop? interop;
+    private bool contentChanged;
+    private bool disposed;
+    private bool isApplying;
+    private bool isReady;
+    private bool hasActiveTarget;
+    private string? interopError;
+    private FileObjectContentStamp? previousStamp;
+
+    private string EffectiveMediaType => Context.MediaType
+        ?? (Kind == FileObjectViewKind.Pdf ? "application/pdf" : "application/octet-stream");
+
+    protected override void OnParametersSet()
+    {
+        if (!Enum.IsDefined(Kind))
+        {
+            throw new InvalidOperationException("Only image and PDF object URL viewers are supported.");
+        }
+
+        var stamp = new FileObjectContentStamp(
+            Context.Request.File,
+            Context.EditRevision,
+            Context.Content.Length,
+            Context.Content,
+            Context.Request.ContentRevision,
+            EffectiveMediaType,
+            Kind);
+        contentChanged = previousStamp != stamp;
+        if (contentChanged)
+        {
+            interopError = null;
+            isApplying = true;
+            isReady = false;
+        }
+
+        previousStamp = stamp;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (interopError is not null || (!firstRender && !contentChanged))
+        {
+            return;
+        }
+
+        if (Context.IsEmpty)
+        {
+            contentChanged = false;
+            isApplying = false;
+            isReady = false;
+            if (interop is not null)
+            {
+                await interop.RevokeAsync(hasActiveTarget ? activeTarget : target);
+                hasActiveTarget = false;
+            }
+
+            return;
+        }
+
+        interop ??= new FileObjectUrlInterop(JS);
+        contentChanged = false;
+        isApplying = true;
+        var appliedStamp = previousStamp;
+        try
+        {
+            if (hasActiveTarget)
+            {
+                await interop.RevokeAsync(activeTarget);
+                hasActiveTarget = false;
+            }
+
+            var applied = await interop.ApplyAsync(
+                target,
+                Context.Content,
+                EffectiveMediaType,
+                Kind == FileObjectViewKind.Image ? "src" : "data");
+            if (!applied || disposed || appliedStamp != previousStamp)
+            {
+                return;
+            }
+
+            activeTarget = target;
+            hasActiveTarget = true;
+            isApplying = false;
+            isReady = false;
+            StateHasChanged();
+        }
+        catch (Exception exception) when (FileObjectUrlInterop.IsExpectedFailure(exception))
+        {
+            if (disposed || appliedStamp != previousStamp)
+            {
+                return;
+            }
+
+            interopError = exception.Message;
+            isApplying = false;
+            isReady = false;
+            if (!disposed && exception is not JSDisconnectedException)
+            {
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void HandleTargetLoaded()
+    {
+        if (!disposed
+            && !Context.IsEmpty
+            && !isApplying
+            && interopError is null)
+        {
+            isReady = true;
+        }
+    }
+
+    private void HandleTargetError()
+    {
+        if (!disposed && !isApplying)
+        {
+            isReady = false;
+            interopError = Kind == FileObjectViewKind.Image
+                ? "The browser could not decode this image."
+                : "The browser could not display this PDF.";
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        disposed = true;
+        if (interop is not null)
+        {
+            await interop.DisposeAsync(hasActiveTarget ? activeTarget : target);
+            hasActiveTarget = false;
+        }
+    }
+
+}

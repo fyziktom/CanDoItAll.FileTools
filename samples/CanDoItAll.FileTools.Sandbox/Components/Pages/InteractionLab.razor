@@ -1,0 +1,120 @@
+@page "/interaction"
+@rendermode InteractiveServer
+@inject SandboxInteractionGateway Gateway
+
+<PageTitle>File Interaction Lab</PageTitle>
+
+<div class="interaction-lab" data-testid="interaction-lab">
+    <header class="interaction-lab__header">
+        <div class="interaction-lab__identity">
+            <span aria-hidden="true">FT</span>
+            <div>
+                <h1>File interaction lab</h1>
+                <p>Explicit renderers · host-owned persistence · bounded content</p>
+            </div>
+        </div>
+        <nav aria-label="Sandbox labs">
+            <a href="/browser">Browser</a>
+            <a href="/interaction" aria-current="page">Interaction</a>
+        </nav>
+    </header>
+
+    <div class="interaction-lab__body">
+        <aside class="interaction-matrix" aria-label="Interaction sample matrix">
+            <div class="interaction-matrix__heading">
+                <span>Direct matrix</span>
+                <strong>@Gateway.Samples.Count samples</strong>
+            </div>
+            <div class="interaction-matrix__samples">
+                @foreach (SandboxInteractionSample sample in Gateway.Samples)
+                {
+                    <button @key="sample.Id"
+                            type="button"
+                            class="@(selection?.Id == sample.Id ? "is-active" : null)"
+                            aria-pressed="@(selection?.Id == sample.Id)"
+                            data-testid="@($"interaction-sample-{sample.Id}")"
+                            @onclick="() => OpenSample(sample.Id)">
+                        <span class="sample-kind">@sample.Kind</span>
+                        <strong>@sample.Label</strong>
+                        <small>@sample.Description</small>
+                    </button>
+                }
+            </div>
+            <div class="interaction-matrix__contract">
+                <span>Host contract</span>
+                <ul>
+                    <li>No storage dependency</li>
+                    <li>No OS or clipboard actions</li>
+                    <li>Fresh bounded streams</li>
+                    <li>Optimistic revisions</li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="interaction-workspace">
+            <div class="interaction-workspace__context">
+                <div>
+                    <span>Selected surface</span>
+                    <h2>@(selection?.Label ?? "Interaction closed")</h2>
+                </div>
+                <p>View and Edit resolve from the selected profile. Diff remains visibly unavailable until a host registers that optional seam.</p>
+            </div>
+
+            <div class="interaction-workspace__frame" data-testid="interaction-workspace-frame">
+                @if (selection is not null)
+                {
+                    <SandboxInteractionWindow @key="selection.Id"
+                                              Selection="selection"
+                                              Closed="CloseInteraction"
+                                              HostEvent="RecordHostEvent"
+                                              InteractionStateChanged="RecordState" />
+                }
+                else
+                {
+                    <div class="interaction-workspace__closed" data-testid="interaction-closed-state">
+                        <strong>Interaction closed</strong>
+                        <span>The host released the bounded window without executing any external action.</span>
+                        <button type="button" data-testid="interaction-reopen" @onclick="Reopen">Reopen selected sample</button>
+                    </div>
+                }
+            </div>
+
+            <footer class="interaction-workspace__evidence">
+                <div>
+                    <span>Last host event</span>
+                    <strong data-testid="interaction-page-event">@lastHostEvent</strong>
+                </div>
+                <div>
+                    <span>StateChanged</span>
+                    <strong data-testid="interaction-page-state">@lastState</strong>
+                </div>
+            </footer>
+        </main>
+    </div>
+</div>
+
+@code {
+    private SandboxInteractionSelection? selection;
+    private string selectedSampleId = "markdown";
+    private string lastHostEvent = "No persistence request yet";
+    private string lastState = "Waiting for initial state";
+
+    protected override void OnInitialized() => OpenSample(selectedSampleId);
+
+    private void OpenSample(string sampleId)
+    {
+        selectedSampleId = sampleId;
+        selection = Gateway.CreateSelection(sampleId);
+        lastHostEvent = $"Opened {selection.Request.FileName}";
+        lastState = "Loading";
+    }
+
+    private void CloseInteraction() => selection = null;
+
+    private void Reopen() => OpenSample(selectedSampleId);
+
+    private void RecordHostEvent(string message) => lastHostEvent = message;
+
+    private void RecordState(FileInteractionState state)
+        => lastState = $"{state.Lifecycle} · {(state.IsSaving ? "saving" : state.IsDirty ? "dirty" : "clean")} · edit {state.EditRevision}";
+}

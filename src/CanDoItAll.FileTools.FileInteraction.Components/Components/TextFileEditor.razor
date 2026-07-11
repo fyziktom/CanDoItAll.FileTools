@@ -1,0 +1,22 @@
+@implements IFileInteractionRendererComponent
+
+<textarea class="cdi-ft-text-editor"
+          @bind="editorText"
+          @bind:event="oninput"
+          @bind:after="HandleAfterInputAsync"
+          aria-label="Edit @Context.Request.FileName"
+          data-testid="interaction-text-editor"
+          spellcheck="false"></textarea>
+
+@code {
+    [Parameter, EditorRequired]
+    public FileInteractionRenderContext Context { get; set; } = default!;
+
+    private string editorText = string.Empty;
+
+    protected override void OnParametersSet()
+        => editorText = Context.Text ?? string.Empty;
+
+    private Task HandleAfterInputAsync()
+        => Context.TextChanged.InvokeAsync(editorText);
+}

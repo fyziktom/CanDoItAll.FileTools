@@ -1,0 +1,96 @@
+@namespace CanDoItAll.FileTools.FileBrowser.Components
+
+<nav class="ft-file-browser__location" aria-label="Current folder">
+    <div class="ft-file-browser__history-actions" role="group" aria-label="Folder history">
+        <button type="button"
+                class="ft-file-browser__icon-button"
+                disabled="@(Snapshot.IsBusy || !Snapshot.CanGoBack)"
+                @onclick="BackRequested"
+                aria-label="Back"
+                title="Back">&#8592;</button>
+        <button type="button"
+                class="ft-file-browser__icon-button"
+                disabled="@(Snapshot.IsBusy || !Snapshot.CanGoForward)"
+                @onclick="ForwardRequested"
+                aria-label="Forward"
+                title="Forward">&#8594;</button>
+        <button type="button"
+                class="ft-file-browser__icon-button"
+                disabled="@(Snapshot.IsBusy || !Snapshot.CanGoUp)"
+                @onclick="UpRequested"
+                aria-label="Up one level"
+                title="Up one level">&#8593;</button>
+    </div>
+
+    <ol class="ft-file-browser__breadcrumb-list">
+        @if (Snapshot.Location is not null)
+        {
+            @for (int index = 0; index < VisiblePath.Count; index++)
+            {
+                FileBrowserItem item = VisiblePath[index];
+                bool isCurrent = item.Key == Snapshot.Location.Key;
+                @if (PathIsTruncated && index == 1)
+                {
+                    <li class="ft-file-browser__breadcrumb-ellipsis"
+                        aria-label="@($"{OmittedPathCount} intermediate folders omitted")">
+                        <span aria-hidden="true">/ &#8230;</span>
+                    </li>
+                }
+
+                <li @key="item.Key" class="ft-file-browser__breadcrumb-item">
+                    @if (index > 0)
+                    {
+                        <span class="ft-file-browser__breadcrumb-separator" aria-hidden="true">/</span>
+                    }
+                    @if (isCurrent)
+                    {
+                        <span class="ft-file-browser__breadcrumb-current" aria-current="page">@item.Name</span>
+                    }
+                    else
+                    {
+                        <button type="button"
+                                class="ft-file-browser__breadcrumb-button"
+                                disabled="@Snapshot.IsBusy"
+                                @onclick="() => NavigateRequested.InvokeAsync(item.Key)">@item.Name</button>
+                    }
+                </li>
+            }
+        }
+        else
+        {
+            <li class="ft-file-browser__breadcrumb-current">No folder selected</li>
+        }
+    </ol>
+</nav>
+
+@code {
+    [Parameter, EditorRequired]
+    public FileBrowserSnapshot Snapshot { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback BackRequested { get; set; }
+
+    [Parameter]
+    public EventCallback ForwardRequested { get; set; }
+
+    [Parameter]
+    public EventCallback UpRequested { get; set; }
+
+    [Parameter]
+    public EventCallback<FileBrowserItemKey> NavigateRequested { get; set; }
+
+    private IReadOnlyList<FileBrowserItem> VisiblePath
+    {
+        get
+        {
+            IReadOnlyList<FileBrowserItem> path = Snapshot.Location?.Path ?? [];
+            return path.Count <= 5
+                ? path
+                : [path[0], path[^3], path[^2], path[^1]];
+        }
+    }
+
+    private bool PathIsTruncated => Snapshot.Location?.Path.Count > 5;
+
+    private int OmittedPathCount => Math.Max(0, (Snapshot.Location?.Path.Count ?? 0) - 4);
+}

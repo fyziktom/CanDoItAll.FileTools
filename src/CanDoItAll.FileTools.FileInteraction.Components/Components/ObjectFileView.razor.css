@@ -1,0 +1,16 @@
+.cdi-ft-object-fallback {
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 0.4rem;
+    min-block-size: 12rem;
+    block-size: 100%;
+    padding: 1.25rem;
+    color: var(--cdi-ft-muted, #686761);
+    background: var(--cdi-ft-paper, #fbfaf7);
+    text-align: center;
+}
+
+.cdi-ft-object-fallback strong {
+    color: var(--cdi-ft-ink, #1d1d1b);
+}

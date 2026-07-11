@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-pack:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install .NET SDK from global.json
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore .\CanDoItAll.FileTools.slnx
+
+      - name: Build
+        run: dotnet build .\CanDoItAll.FileTools.slnx -c Release --no-restore -warnaserror
+
+      - name: Test
+        run: dotnet test .\CanDoItAll.FileTools.slnx -c Release --no-build --no-restore
+
+      - name: Verify formatting
+        run: dotnet format .\CanDoItAll.FileTools.slnx --verify-no-changes --no-restore
+
+      - name: Pack
+        shell: pwsh
+        run: .\scripts\pack-release.ps1 -Configuration Release -NoBuild -NoRestore
+
+      - name: Validate packages
+        shell: pwsh
+        run: .\scripts\validate-packages.ps1

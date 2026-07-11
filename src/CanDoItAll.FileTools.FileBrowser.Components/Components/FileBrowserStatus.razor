@@ -1,0 +1,47 @@
+@namespace CanDoItAll.FileTools.FileBrowser.Components
+
+<footer class="ft-file-browser__status" aria-live="polite">
+    <span>
+        @if (Snapshot.TotalCount.HasValue)
+        {
+            @($"{Snapshot.Items.Count:N0} of {Snapshot.TotalCount.Value:N0} items")
+        }
+        else
+        {
+            @($"{Snapshot.Items.Count:N0} items")
+        }
+    </span>
+    @if (Snapshot.SelectedKeys.Count > 0)
+    {
+        <span>@Snapshot.SelectedKeys.Count selected</span>
+    }
+    @if (Snapshot.Search is not null)
+    {
+        <span>
+            @FileBrowserDisplayFormatter.FormatScope(Snapshot.Search.Scope)
+            @if (Snapshot.Search.IsPartial)
+            {
+                <span> &middot; partial</span>
+            }
+        </span>
+    }
+    else if (Snapshot.BrowseCompleteness == FileBrowserCompleteness.Partial)
+    {
+        <span>Partial folder result</span>
+    }
+    @if (DisplayMode == FileBrowserDisplayMode.Standard)
+    {
+        <span class="ft-file-browser__status-cache">
+            @Snapshot.Diagnostics.CachedContainerQueryCount loaded folders
+            &middot; @Snapshot.Diagnostics.CachedItemCount retained items
+        </span>
+    }
+</footer>
+
+@code {
+    [Parameter, EditorRequired]
+    public FileBrowserSnapshot Snapshot { get; set; } = default!;
+
+    [Parameter]
+    public FileBrowserDisplayMode DisplayMode { get; set; }
+}

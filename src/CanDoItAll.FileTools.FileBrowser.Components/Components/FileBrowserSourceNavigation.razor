@@ -1,0 +1,72 @@
+@namespace CanDoItAll.FileTools.FileBrowser.Components
+
+@if (Snapshot.Sources.Count > 1)
+{
+    <nav class="ft-file-browser__sources" aria-label="File sources">
+        @if (DisplayMode == FileBrowserDisplayMode.Standard)
+        {
+            <p class="ft-file-browser__section-label">Sources</p>
+            <ul class="ft-file-browser__source-list">
+                @foreach (FileBrowserSourceDescriptor source in Snapshot.Sources)
+                {
+                    bool selected = source.Id == Snapshot.CurrentSource?.Id;
+                    <li @key="source.Id">
+                        <button type="button"
+                                class="ft-file-browser__source-button @(selected ? "is-current" : null)"
+                                aria-current="@(selected ? "page" : null)"
+                                disabled="@Snapshot.IsBusy"
+                                @onclick="() => SourceChanged.InvokeAsync(source.Id)">
+                            <span class="ft-file-browser__source-name">@source.DisplayName</span>
+                            @if (!string.IsNullOrWhiteSpace(source.Description))
+                            {
+                                <span class="ft-file-browser__source-description">@source.Description</span>
+                            }
+                        </button>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <label class="ft-file-browser__source-select-label">
+                <span>Source</span>
+                <select value="@Snapshot.CurrentSource?.Id.Value"
+                        disabled="@Snapshot.IsBusy"
+                        @onchange="HandleSourceChangedAsync"
+                        aria-label="File source">
+                    @foreach (FileBrowserSourceDescriptor source in Snapshot.Sources)
+                    {
+                        <option @key="source.Id" value="@source.Id.Value">@source.DisplayName</option>
+                    }
+                </select>
+            </label>
+        }
+    </nav>
+}
+else if (Snapshot.CurrentSource is not null)
+{
+    <div class="ft-file-browser__single-source" aria-label="File source">
+        @Snapshot.CurrentSource.DisplayName
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public FileBrowserSnapshot Snapshot { get; set; } = default!;
+
+    [Parameter]
+    public FileBrowserDisplayMode DisplayMode { get; set; }
+
+    [Parameter]
+    public EventCallback<FileBrowserSourceId> SourceChanged { get; set; }
+
+    private Task HandleSourceChangedAsync(ChangeEventArgs args)
+    {
+        string? value = args.Value?.ToString();
+        FileBrowserSourceDescriptor? source = Snapshot.Sources.FirstOrDefault(
+            candidate => string.Equals(candidate.Id.Value, value, StringComparison.Ordinal));
+        return source is null
+            ? Task.CompletedTask
+            : SourceChanged.InvokeAsync(source.Id);
+    }
+}

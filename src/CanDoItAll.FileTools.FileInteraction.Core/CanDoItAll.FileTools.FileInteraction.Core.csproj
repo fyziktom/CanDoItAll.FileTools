@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>CanDoItAll.FileTools.FileInteraction.Core</AssemblyName>
+    <RootNamespace>CanDoItAll.FileTools.FileInteraction</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <Description>UI-neutral file viewer/editor selection, history, save, and preview coordination.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CanDoItAll.FileTools.Abstractions\CanDoItAll.FileTools.Abstractions.csproj" />
+  </ItemGroup>
+</Project>
+

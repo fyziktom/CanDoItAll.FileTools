@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>CanDoItAll.FileTools.FileBrowser.Core</AssemblyName>
+    <RootNamespace>CanDoItAll.FileTools.FileBrowser</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <Description>Provider-neutral browsing, navigation, search, and session coordination.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CanDoItAll.FileTools.Abstractions\CanDoItAll.FileTools.Abstractions.csproj" />
+  </ItemGroup>
+</Project>
+

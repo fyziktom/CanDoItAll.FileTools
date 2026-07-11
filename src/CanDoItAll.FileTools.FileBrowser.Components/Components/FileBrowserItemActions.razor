@@ -1,0 +1,46 @@
+@namespace CanDoItAll.FileTools.FileBrowser.Components
+
+<div class="ft-file-browser__item-actions">
+    <button type="button"
+            class="ft-file-browser__action-menu-button"
+            aria-label="@($"Actions for {Item.Name}")"
+            aria-controls="@menuId"
+            disabled="@Disabled"
+            popovertarget="@menuId"
+            popovertargetaction="toggle"
+            @onclick="EnsureActionsAsync">&#8942;</button>
+
+    <div id="@menuId"
+         class="ft-file-browser__action-menu"
+         role="group"
+         popover="auto"
+         aria-label="@($"Actions for {Item.Name}")">
+        @if (loading)
+        {
+            <span class="ft-file-browser__action-menu-status" role="status">Loading actions&#8230;</span>
+        }
+        else if (error is not null)
+        {
+            <span class="ft-file-browser__action-menu-status" role="alert">@error</span>
+            <button type="button" disabled="@Disabled" @onclick="LoadActionsAsync">Retry</button>
+        }
+        else if (actions.Count == 0)
+        {
+            <span class="ft-file-browser__action-menu-status">No actions available</span>
+        }
+        else
+        {
+            @foreach (FileBrowserActionDescriptor action in actions)
+            {
+                <button @key="action.Id"
+                        type="button"
+                        disabled="@Disabled"
+                        class="ft-file-browser__action-item ft-file-browser__action-item--@action.Tone.ToString().ToLowerInvariant()"
+                        title="@action.Description"
+                        popovertarget="@menuId"
+                        popovertargetaction="hide"
+                        @onclick="() => RequestActionAsync(action)">@action.Label</button>
+            }
+        }
+    </div>
+</div>

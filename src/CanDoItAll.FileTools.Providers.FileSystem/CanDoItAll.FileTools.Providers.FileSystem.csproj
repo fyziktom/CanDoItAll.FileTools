@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>CanDoItAll.FileTools.Providers.FileSystem</AssemblyName>
+    <RootNamespace>CanDoItAll.FileTools.Providers.FileSystem</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <Description>Optional root-confined local filesystem provider.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CanDoItAll.FileTools.Abstractions\CanDoItAll.FileTools.Abstractions.csproj" />
+  </ItemGroup>
+</Project>
+

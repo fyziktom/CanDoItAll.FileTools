@@ -1,0 +1,195 @@
+@namespace CanDoItAll.FileTools.FileBrowser.Components
+
+<div class="ft-file-browser__toolbar" aria-label="File browser controls">
+    <label class="ft-file-browser__search-field">
+        <span class="ft-file-browser__search-symbol" aria-hidden="true">&#8981;</span>
+        <span class="ft-file-browser__sr-only">Search files and folders</span>
+        <input type="search"
+               value="@SearchText"
+               placeholder="Search files and folders"
+               autocomplete="off"
+               spellcheck="false"
+               @oninput="HandleSearchInputAsync"
+               aria-label="Search files and folders" />
+    </label>
+
+    @if (DisplayMode != FileBrowserDisplayMode.Minimal)
+    {
+        <label class="ft-file-browser__field">
+            <span>Scope</span>
+            <select value="@SearchScope" @onchange="HandleSearchScopeChangedAsync" aria-label="Search scope">
+                @foreach (FileBrowserSearchScope scope in Snapshot.AvailableSearchScopes)
+                {
+                    <option @key="scope" value="@scope">@FileBrowserDisplayFormatter.FormatScope(scope)</option>
+                }
+            </select>
+        </label>
+
+        <label class="ft-file-browser__field">
+            <span>Type</span>
+            <select value="@CategoryValue"
+                    disabled="@Snapshot.IsBusy"
+                    @onchange="HandleCategoryChangedAsync"
+                    aria-label="File type filter">
+                <option value="">All types</option>
+                @foreach (FileBrowserItemCategory category in Enum.GetValues<FileBrowserItemCategory>())
+                {
+                    <option @key="category" value="@category">@FormatCategory(category)</option>
+                }
+            </select>
+        </label>
+
+        <label class="ft-file-browser__field">
+            <span>Sort</span>
+            <select value="@Snapshot.Sort.Field"
+                    disabled="@Snapshot.IsBusy"
+                    @onchange="HandleSortChangedAsync"
+                    aria-label="Sort field">
+                @foreach (FileBrowserSortField sortField in SupportedSortFields)
+                {
+                    <option @key="sortField" value="@sortField">@FormatSort(sortField)</option>
+                }
+            </select>
+        </label>
+    }
+
+    <div class="ft-file-browser__toolbar-actions">
+        @if (Snapshot.CurrentSource?.Supports(FileBrowserSourceCapabilities.RecursiveBrowse) == true)
+        {
+            <label class="ft-file-browser__recursive-toggle">
+                <input type="checkbox"
+                       checked="@Snapshot.IncludeDescendants"
+                       disabled="@Snapshot.IsBusy"
+                       @onchange="HandleIncludeDescendantsChangedAsync" />
+                <span>@IncludeDescendantsLabel</span>
+            </label>
+        }
+
+        @if (DisplayMode != FileBrowserDisplayMode.Minimal)
+        {
+            <button type="button"
+                    class="ft-file-browser__icon-button"
+                    disabled="@Snapshot.IsBusy"
+                    @onclick="SortDirectionReversed"
+                    aria-label="Reverse sort direction"
+                    title="Reverse sort direction">
+                @(Snapshot.Sort.Direction == FileBrowserSortDirection.Ascending ? "\u2191" : "\u2193")
+            </button>
+        }
+
+        <button type="button"
+                class="ft-file-browser__icon-button"
+                disabled="@Snapshot.IsBusy"
+                @onclick="RefreshRequested"
+                aria-label="Refresh folder"
+                title="Refresh folder">&#8635;</button>
+
+        <div class="ft-file-browser__view-toggle" role="group" aria-label="View mode">
+            <button type="button"
+                    class="ft-file-browser__icon-button @(ViewMode == FileBrowserViewMode.List ? "is-active" : null)"
+                    aria-pressed="@(ViewMode == FileBrowserViewMode.List)"
+                    @onclick="() => ViewModeChanged.InvokeAsync(FileBrowserViewMode.List)"
+                    aria-label="List view"
+                    title="List view">&#9776;</button>
+            <button type="button"
+                    class="ft-file-browser__icon-button @(ViewMode == FileBrowserViewMode.Cards ? "is-active" : null)"
+                    aria-pressed="@(ViewMode == FileBrowserViewMode.Cards)"
+                    @onclick="() => ViewModeChanged.InvokeAsync(FileBrowserViewMode.Cards)"
+                    aria-label="Card view"
+                    title="Card view">&#9638;</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public FileBrowserSnapshot Snapshot { get; set; } = default!;
+
+    [Parameter]
+    public string SearchText { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> SearchTextChanged { get; set; }
+
+    [Parameter]
+    public FileBrowserSearchScope SearchScope { get; set; }
+
+    [Parameter]
+    public EventCallback<FileBrowserSearchScope> SearchScopeChanged { get; set; }
+
+    [Parameter]
+    public FileBrowserViewMode ViewMode { get; set; }
+
+    [Parameter]
+    public EventCallback<FileBrowserViewMode> ViewModeChanged { get; set; }
+
+    [Parameter]
+    public FileBrowserDisplayMode DisplayMode { get; set; }
+
+    [Parameter]
+    public string IncludeDescendantsLabel { get; set; } = "Include descendants";
+
+    [Parameter]
+    public EventCallback<FileBrowserItemCategory?> CategoryChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<FileBrowserSortField> SortChanged { get; set; }
+
+    [Parameter]
+    public EventCallback SortDirectionReversed { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IncludeDescendantsChanged { get; set; }
+
+    [Parameter]
+    public EventCallback RefreshRequested { get; set; }
+
+    private string CategoryValue
+        => Snapshot.Filter.Categories.Count == 1
+            ? Snapshot.Filter.Categories.Single().ToString()
+            : string.Empty;
+
+    private IEnumerable<FileBrowserSortField> SupportedSortFields
+        => (Snapshot.CurrentSource?.SupportedSortFields ?? Enum.GetValues<FileBrowserSortField>().ToHashSet())
+            .OrderBy(sortField => sortField);
+
+    private Task HandleSearchInputAsync(ChangeEventArgs args)
+        => SearchTextChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    private Task HandleSearchScopeChangedAsync(ChangeEventArgs args)
+        => Enum.TryParse(args.Value?.ToString(), out FileBrowserSearchScope scope)
+            ? SearchScopeChanged.InvokeAsync(scope)
+            : Task.CompletedTask;
+
+    private Task HandleCategoryChangedAsync(ChangeEventArgs args)
+    {
+        string? value = args.Value?.ToString();
+        return string.IsNullOrWhiteSpace(value)
+            ? CategoryChanged.InvokeAsync(null)
+            : Enum.TryParse(value, out FileBrowserItemCategory category)
+                ? CategoryChanged.InvokeAsync(category)
+                : Task.CompletedTask;
+    }
+
+    private Task HandleSortChangedAsync(ChangeEventArgs args)
+        => Enum.TryParse(args.Value?.ToString(), out FileBrowserSortField sortField)
+            ? SortChanged.InvokeAsync(sortField)
+            : Task.CompletedTask;
+
+    private Task HandleIncludeDescendantsChangedAsync(ChangeEventArgs args)
+        => IncludeDescendantsChanged.InvokeAsync(args.Value is bool value && value);
+
+    private static string FormatSort(FileBrowserSortField sortField)
+        => sortField == FileBrowserSortField.ModifiedAt ? "Modified" : sortField.ToString();
+
+    private static string FormatCategory(FileBrowserItemCategory category)
+        => category switch
+        {
+            FileBrowserItemCategory.Folder => "Folders",
+            FileBrowserItemCategory.Document => "Documents",
+            FileBrowserItemCategory.Image => "Images",
+            FileBrowserItemCategory.Archive => "Archives",
+            FileBrowserItemCategory.Link => "Links",
+            _ => category.ToString()
+        };
+}

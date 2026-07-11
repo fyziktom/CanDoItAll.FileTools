@@ -1,0 +1,8 @@
+@implements IFileInteractionRendererComponent
+
+<FileObjectView Context="Context" Kind="FileObjectViewKind.Pdf" />
+
+@code {
+    [Parameter, EditorRequired]
+    public FileInteractionRenderContext Context { get; set; } = default!;
+}

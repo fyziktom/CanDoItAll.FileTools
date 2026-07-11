@@ -1,0 +1,63 @@
+.cdi-ft-markdown {
+    color: inherit;
+    font: inherit;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+    padding: clamp(.75rem, 2cqi, 1.25rem);
+}
+
+.cdi-ft-markdown ::deep h1,
+.cdi-ft-markdown ::deep h2,
+.cdi-ft-markdown ::deep h3,
+.cdi-ft-markdown ::deep h4,
+.cdi-ft-markdown ::deep h5,
+.cdi-ft-markdown ::deep h6 {
+    line-height: 1.2;
+    margin-block: 1.25em .55em;
+}
+
+.cdi-ft-markdown ::deep h1:first-child,
+.cdi-ft-markdown ::deep h2:first-child,
+.cdi-ft-markdown ::deep h3:first-child {
+    margin-block-start: 0;
+}
+
+.cdi-ft-markdown ::deep pre,
+.cdi-ft-markdown ::deep code {
+    background: color-mix(in srgb, currentColor 8%, transparent);
+    border-radius: .25rem;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.cdi-ft-markdown ::deep code {
+    padding: .1em .3em;
+}
+
+.cdi-ft-markdown ::deep pre {
+    max-inline-size: 100%;
+    overflow: auto;
+    padding: .75rem;
+}
+
+.cdi-ft-markdown ::deep pre code {
+    background: none;
+    padding: 0;
+}
+
+.cdi-ft-markdown ::deep .cdi-ft-markdown__link-label {
+    text-decoration: underline dotted;
+    text-underline-offset: .2em;
+}
+
+.cdi-ft-markdown ::deep .cdi-ft-markdown__image-label {
+    border: 1px dashed color-mix(in srgb, currentColor 25%, transparent);
+    border-radius: .25rem;
+    display: inline-block;
+    font-size: .9em;
+    padding: .1em .35em;
+}
+
+.cdi-ft-markdown__state {
+    color: color-mix(in srgb, currentColor 68%, transparent);
+    padding: 1rem;
+}

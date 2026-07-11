@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>CanDoItAll.FileTools.Sandbox</AssemblyName>
+    <RootNamespace>CanDoItAll.FileTools.Sandbox</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\CanDoItAll.FileTools.FileBrowser.Core\CanDoItAll.FileTools.FileBrowser.Core.csproj" />
+    <ProjectReference Include="..\..\src\CanDoItAll.FileTools.FileBrowser.Components\CanDoItAll.FileTools.FileBrowser.Components.csproj" />
+    <ProjectReference Include="..\..\src\CanDoItAll.FileTools.FileInteraction.Components\CanDoItAll.FileTools.FileInteraction.Components.csproj" />
+    <ProjectReference Include="..\..\src\CanDoItAll.FileTools.FileInteraction.Markdown\CanDoItAll.FileTools.FileInteraction.Markdown.csproj" />
+    <ProjectReference Include="..\..\src\CanDoItAll.FileTools.Providers.FileSystem\CanDoItAll.FileTools.Providers.FileSystem.csproj" />
+  </ItemGroup>
+</Project>
