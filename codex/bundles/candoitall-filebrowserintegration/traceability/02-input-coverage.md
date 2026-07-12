@@ -1,0 +1,27 @@
+# Input Coverage and Literal Closure Matrix
+
+| Note | Status | Preserved user intent | Requirements | Owner | Final proof / explicit exception |
+| --- | --- | --- | --- | --- | --- |
+| N001 | Solved | “move” file-domain components/helpers to FileTools; Components keeps simple wrappers | R001-R004,R030 | SB01,SB03,SB05,SB08 | FileBrowser runtime/RCL ships in FileTools; exactly 107 tracked legacy ownership files removed after proof; Components README retains simple-wrapper ownership |
+| N002 | Solved | FileTools mixes light C# models/helpers with browsing/showing/editing components | R003-R004,R012-R023 | SB02,SB05-SB08 | seven products, 433 tests, standalone Sandbox/docs, and 7+7 validated packages |
+| N003 | Partially solved | storage drivers remain in main and FileTools uses a simplified interface/example filesystem | R002,R005,R022,R025 | SB02,SB04,SB08 | neutral contracts and 83-case filesystem example ship; native main sidecars/adapters are designed but intentionally future |
+| N004 | Partially solved | browse project/subproject files from filtered tab, project card dialog, canvas floating window | R005,R010,R025,R028 | SB05,SB08 | generic responsive browser ships; corrected Projects/Workbench anchors, shared filters, hierarchy scope, dialog/window designs and CI7-CI9 gates are future main implementation |
+| N005 | Partially solved | browse folder nodes and process-run artifacts with always-current agent state | R008,R009,R025,R027 | SB03-SB05,SB08 | disabled-retention/live filesystem behavior ships; Workbench/Processes semantic-root and uncached UI integration remains future CI4/CI5/CI9/CI10 |
+| N006 | Partially solved | browse “all resources” across projects/IPFS/external filesystems | R005,R025-R028 | SB02,SB08 | multi-source contract and Resources plan cover all named classes; production promotion additionally requires `resource.storage-object` or IPFS connector and CI11 reauthorization |
+| N007 | Partially solved | browse remote FTP | R005,R025,R027 | SB02,SB08 | provider-neutral seam and FTP native-sidecar/adapter plan complete; no FTP production adapter is falsely claimed |
+| N008 | Solved | floating browser needs minimalistic modes and visual phone/floating validation | R010-R011 | SB05 | Standard/Compact/Minimal List/Cards matrix at 1440x900,720x520,560x360,480x360,390x360,390x844; repaired screenshots, scroll metrics, console 0/0 in `proof/SB05` |
+| N009 | Partially solved | optional cache, driver settings, in-memory now, future DB/external provider | R008-R009,R026-R028 | SB03,SB08 | optional bounded/disabled session retention ships; typed Disabled/Memory/Hybrid host policy, scoped keys, in-memory revision now, and durable revision before distributed cache are future main design |
+| N010 | Solved | FileBrowser double-click only raises event; host shows/acts | R006-R007 | SB04,SB05 | descriptive eligibility, awaited host events, folder navigation separation, zero provider action execution, stale-callback rejection, Sandbox host log |
+| N011 | Solved | generic FileInteraction wrapper/builder independent of main/heavy dependencies | R012-R015,R020 | SB02,SB06,SB07 | explicit resolver/renderer/history composition, host events, focused clean dependency snapshots, optional package graph |
+| N012 | Solved | View/Edit with file-specific undo/forward/history | R013,R017 | SB06,SB07 | deterministic provider priority/ambiguity, bounded fallback, file/revision isolation, rendered undo/redo and future Diff seam tests |
+| N013 | Solved | host persistence event plus manual/automatic strategies | R015-R016 | SB06,SB07 | post-transition save completion, awaited host callback, manual/idle/interval/edit-count/text-unit triggers, dynamic availability and failure/conflict/replacement tests |
+| N014 | Solved | split live preview with per-driver debounce; future diff | R018-R019 | SB06,SB07 | coalesced/stale-safe preview, rendered split layout, per-profile debounce, explicit unsupported/registered Diff seam |
+| N015 | Solved | consumers should not take all renderer dependencies; basic types and injected extras | R004,R014,R020 | SB01,SB07,SB08 | base built-ins stay lightweight; Markdown/Markdig isolated to optional package; package dependency validator passes |
+| N016 | Solved | file-type JS/CSS must avoid conflicts | R021 | SB05,SB07 | isolated Razor CSS; collocated object-URL module with owned lifecycle; no global script/style/window path; package assets validated |
+| N017 | Solved | architecture first, phased implementation/testing, main integration isolated for later | R024-R030 | all | eight ordered subbundles/proof gates; shipped FileTools and cleanup; source-anchored CI1-CI13 future main plan; main untouched |
+
+## Closure policy
+
+“Solved” for main-module rows means the requested architecture and step-by-step future integration plan is complete, not that deferred CanDoItAll code was modified. Any row that implies production main UI/cache behavior must be marked `Partially solved` at final closure with the explicit future subbundle/phase reference.
+
+For N006, a generic browser source is insufficient proof of Add as resource: the selected storage/IPFS item must be re-resolved and authorized, then persisted through a connector model that exists in Resources. For N009, FileBrowser session-retention proof is not host-cache proof, and memory-only revision proof cannot be reused to enable a distributed secondary.

@@ -1,0 +1,83 @@
+we added new file browser component and we must improve our base around file tooling and prepare design of how to use it in CanDoItAll.
+We will need to use it in our CanDoItAll modules (C:\repositories\CanDoItAll). But before we will do it you must improve our component to be prepared for such a integration. CanDoItAll is under some refactoring now, so we cannot touch it, but you must analyze it and prepare how we will integrate it and if component match for that.
+
+Because our file tools related components and helpers are own domain I created C:\repositories\CanDoItAll.FileTools repo where we must move those parts. 
+In our CanDoItAll.Components we will keep simple wrappers for showing some files like mermaid wrapper, but filebrowser and new related things (below) we must have in FileTools repo. FileTools repo will be combination of models/helpers c# libs and set of components related to file browsing showing and editing. 
+The storage drivers will remain in CanDoItAll main repo and FileTools will not refer them. FileTools will have simplified interface for storage and just simplified example filesystem driver for now.
+
+# Main usecases that I see now will be:
+- Browsing of files of project and its subprojects
+	-- One access to this will be from level of project browser. There will be tab where is possible to switch from list of cards of projects to their files. Based on selected filters of projects it will create data for file browser.
+	-- another access will be also from level of project browser. On each project card we have small buttons (like open project structure). There will be new button to open dialog with file browser of files of that project.
+	-- another access will be from level of project structure canvas. There must be new button on toolbar to open floating window with file browser of that project with checkbox that will allow to get also subprojects files.
+	
+- Browsing of files of artefacts or file system folder from project structure
+	-- in project structure when some process is doing for example some app or documents, the agents will add folder node into project structure. When we doubleclick on it it offers to open in OS file explorer. We will keep it, but there will be another option to open folder in floating window file browser in canvas. 
+	-- This would be good to have also from level of processes runs browsing. We have good capture of runs history. Thats place where we will add filebrowser too to browse folder with artefacts and other files from the process run. 
+- Browsing of all resrouces
+	-- we have resources module. That is for kind of shared resources, but it will happen that user will load file into some project and then want to make it as resource. Resources module should have file browser that can show files of projects, files on IPFS or another attached external file system folder. 
+- Browsing of remote storage like FTP
+
+
+# UI related notes to browser:
+- I think that for those floating windows we need to assure that file browser can be in some minimalistic design to do not take too much space. It means that filebrowser can have different modes. Maybe it can be covered with our phone version, but we must test it and validate it visually. Floating windows are not large.
+
+# Architecture notes:
+Important: architecture notes are more about integration of side of CanDoItAll and new FileTools repo. FileBrowser component should remain more generic and light-weighted. 
+It is important to design those things because they will show how the sources of data for FileBrowser will act and what we need for file interactions. Without that we cannot be sure that our component and their services will allow such a usecases.
+We are not building this just for our CanDoItAll app. It is base library for some future even much smaller projects too. You must think about good structure to allow to pickup smaller parts of those components/drivers without taking all heavy dependencies all the time. 
+
+## CanDoItAll integration
+- CanDoItAll has shared lib Infrastructure where is Storage folder (C:\repositories\CanDoItAll\src\Foundation\CanDoItAll.Infrastructure\Storage\) with basic storage drivers. It has also persistence part that uses Db to store type of drivers and other info. Thats place where we must do improvements for integration of filebrowser. I see those points so far:
+	-- We will have requests for files lists for filebrowser that might be cached and some that should not be cached. 
+		--- Cached situation can be IPFS folders, and project files. Project files are specific because they can change but it cost a lot to get their lists all over again. It means that we must have system how project can inform about that its files changed. It can be stored on side of the project model as timestamp of latest change of files or on the side of driver. Project can mix files from folders and ipfs, thats why it is different that just load list of files of some folder from file system of OS.
+		--- Not cached situations are typically folders of processes or in general folders where agents working and there are frequent changes. Those must not be cached. Typically those are folders from file system. This might be good guide for start that whatever is from standard OS file system we will not cache now. If it is part of some project it will be cached on topper level. Agents must have always actual folder and files state.
+	-- we will use .net inbuild cache for that. We do not need to persist the cache state now. It will be inmemory only now. I know that their cache has possibility to switch to use db or external provider, but I expect it needs proper implementation to be prepared for that future step if necessary. Use Microsoft Learn MCP to assure about proper using of prepared .net cache.
+	-- cache must be optional and in drivers settings must be possible to turn it off and on.
+- Storage driver is accessible for all modules. Thats why we need preparation there and then modules must be able to use easilly connection of output and actions with FileBrowser. We do not know all usecases where we will use the browser yet. Thats why we need to think about it as part of prepared infrastructure that can be used to improve or build modules.
+
+## File show and interaction
+In project structure we already have situations where we open dialog with file like PDF, image, markdown, mermaid, etc. In case of filebrowser we do not want integrated show of file. 
+
+FileBrowser component just raise event that doubleclick on some file happen, but show of file or real action will be handeled from app that use our filebrowser. 
+
+Right now we do not have UI show/interaction solved correctly. We need more generic system of file show/interaction, because we will need it on lots of places.
+
+Sometimes it is good to let it on browser like in case of PDFs but it is more rare. Lots of files need some specific wrapper for proper show/interaction (for example image, markdown, mermaid or csv or xlsx ,etc.). For some of those we already have components, but we do not have some generic wrapper/builder over them. We must add that wrapper/builder component system.
+
+where to place it:
+- It will be in our FileTools repo. You must first isolate basic models, enums, helpers, that can be isolated as small abstraction lib first and it might be used in filebrowser too. It must remain light-weighted.
+- This FileInteraction and components and libs around it must not be dependent on any of libs from main CanDoItAll. It must not refer CanDoItAll storage driver or heavy dependencies like that. It must remain light-weighted as much as possible. 
+
+Editing of files:
+- We can be sure that users will need to change the file. It means we must be prepared for future switching between view of file and editor of file in same component wrapper. Thats why I called it above FileInteraction. - It must have mode View or Edit and based on that the component will select proper subcomponent that will provide interaction with file. 
+	-- this preparation will be little more difficult but it is necessary. It would cost us a lot to add it later. 
+	-- Editing is tricky due to Undo/Forward actions. We will have to have some wrapper for provider of undo/forward action of file editing. The provider might be related to type of file, so it means that when FileInteraction component is building own instance it must get from factory proper driver or disable undo actions if not available for that file type. Undo/Forward driver must have interface for history, etc.
+	-- Editing needs external driver to store it. It will be some topper driver that uses this lib/component. So FileInteraction in case of change that must be stored just raise event up to ask for persist the file. We must be prepared for user action save mode and automatic save that is triggered based on some strategy (based on fixed time, time without interaction after change, after number of chars, etc). 
+	-- Sometimes users need live preview during editing. Typically it is good for markdown or mermaid files. FileInteraction must be prepared for possible split of UI and show both. It must not refresh preview immediatelly after each change. It must have proper debounce to do not overload with often refreshing. Those parameters must be part of settings of the driver for file. Some file refresh is simple and fast like markdown, but if it is some docx or some more heavy file it could take longer time.
+	-- In case of text files we can expect later "diff" tool view. We must be prepared for it even we will not implement it immediatelly. 
+	-- In case that we need this FileInteraction component just for some simple case like show of image and we know it will be just for image in whole app it should not take all dependencies for all types of files show/edit drivers. I think we must inject those drivers in builder of services of app where we use it. Maybe it is possible to have some basic types included (image, pdf view, md, mmd, etc) and then anything above will have to be injected/defined in builder. 
+
+- file interaction will need proper system for js/css actions that are file type related. for example in case of mermaid the mouseover and other envets like that will do something different that main app that use that component do normally. I am not sure what is best practice around js/css parts like this. We must avoid conflicts of scripts. 
+
+We do not need to implement all types of files show/edit. We need basic ones and later we will add another files types drivers/componets.
+	
+# Your Main Goal:
+Analyze the userstories and how our File Browser components and its services are prepared for those cases.
+Because of that you must analyze how we will do implementation into CanDoItAll and design that architecture.
+Analyze my requests about FileTools and design detailed architecture of how to do it and then implement it and test it.
+
+# Necessary steps
+
+- You are prepare architecture in deep detail and analyze them if they cover my request completely.
+- You must split architecture into phases and analyze their dependencies and what is best step by step approach to implement and test all step by step. 
+- You must isolate steps for future integration into CanDoItAll modules. It will not be executed now because CanDoItAll main repo is under parallel development. 
+- Then you must implement the FileTools and transfer FileBrowser and test it in the sandbox and do detailed validations and necessary repairs. 
+- When FileTools and FileBrowser are fully ready then analyze and improve architecture and plan for CanDoItAll modules integration. When this is ready your run is done. Implementation into CanDoItAll modules we will run separatelly. 
+
+# You must use
+You must use our Csharp related skills and Microsoft Learn MCP to assure about proper design of architecture.
+
+
+## outputs
+Prepare the whole architecture bundle in "C:\programovani\candoitall-filebrowserintegration". It must include analysis and decesions how to integrate file browser correctly. Whole new FileTools part and transfer of filebrowser there. Also integration of CanDoItAll with FileTools and filebrowser.
