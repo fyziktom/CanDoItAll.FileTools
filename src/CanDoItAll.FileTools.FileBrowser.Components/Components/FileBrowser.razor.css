@@ -39,6 +39,11 @@
     grid-template-columns: minmax(0, 1fr);
 }
 
+.ft-file-browser[data-display-mode="compact"] .ft-file-browser__layout.has-source-navigation,
+.ft-file-browser[data-display-mode="minimal"] .ft-file-browser__layout.has-source-navigation {
+    grid-template-rows: auto minmax(0, 1fr);
+}
+
 .ft-file-browser[data-display-mode="compact"] {
     min-height: 15rem;
     font-size: .8125rem;

@@ -3,10 +3,42 @@ namespace CanDoItAll.FileTools.FileBrowser.Tests;
 public sealed class FileBrowserFocusedCollaboratorTests
 {
     [Fact]
+    public void ItemOrdering_ProviderNative_PreservesInputOrder()
+    {
+        FileBrowserItem[] input =
+        [
+            TestFileBrowserFactory.File("z-last"),
+            TestFileBrowserFactory.Container("a-first")
+        ];
+
+        IReadOnlyList<FileBrowserItem> result = FileBrowserItemOrdering.Apply(
+            input,
+            new FileBrowserSortDescriptor(
+                FileBrowserSortField.ProviderNative,
+                FileBrowserSortDirection.Descending,
+                FoldersFirst: true));
+
+        Assert.Equal(input, result);
+    }
+
+    [Fact]
     public void SessionOptions_RejectUndefinedRetentionMode()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new FileBrowserSessionOptions(
             retentionMode: (FileBrowserStateRetentionMode)int.MaxValue));
+    }
+
+    [Fact]
+    public void SearchBudget_RejectsInvalidDurationConcurrencyMatchAndByteLimits()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new FileBrowserSearchBudget(
+            maximumDuration: TimeSpan.Zero));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new FileBrowserSearchBudget(
+            maximumConcurrentRequests: 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new FileBrowserSearchBudget(
+            maximumMatches: 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new FileBrowserSearchBudget(
+            maximumRetainedBytes: 0));
     }
 
     [Fact]

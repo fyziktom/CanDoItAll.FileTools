@@ -187,25 +187,64 @@ public readonly record struct FileBrowserQueryFingerprint
 /// <summary>Budget for an explicit progressive hierarchy search.</summary>
 public sealed record FileBrowserSearchBudget
 {
-    public FileBrowserSearchBudget(int maximumContainers = 250, int maximumItems = 10_000)
+    public FileBrowserSearchBudget(
+        int maximumContainers = 250,
+        int maximumItems = 10_000,
+        TimeSpan? maximumDuration = null,
+        int maximumConcurrentRequests = 1,
+        int? maximumMatches = null,
+        long maximumRetainedBytes = 8L * 1024 * 1024)
     {
-        if (maximumContainers < 1)
+        if (maximumContainers is < 1 or > 10_000)
         {
             throw new ArgumentOutOfRangeException(nameof(maximumContainers));
         }
 
-        if (maximumItems < 1)
+        if (maximumItems is < 1 or > 1_000_000)
         {
             throw new ArgumentOutOfRangeException(nameof(maximumItems));
         }
 
+        MaximumDuration = maximumDuration ?? TimeSpan.FromSeconds(30);
+        if (MaximumDuration < TimeSpan.FromMilliseconds(10) || MaximumDuration > TimeSpan.FromMinutes(10))
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumDuration));
+        }
+
+        if (maximumConcurrentRequests is < 1 or > 64)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumConcurrentRequests));
+        }
+
+        int effectiveMaximumMatches = maximumMatches ?? Math.Min(1_000, maximumItems);
+        if (effectiveMaximumMatches < 1 || effectiveMaximumMatches > maximumItems)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumMatches));
+        }
+
+        if (maximumRetainedBytes is < 1 or > 256L * 1024 * 1024)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumRetainedBytes));
+        }
+
         MaximumContainers = maximumContainers;
         MaximumItems = maximumItems;
+        MaximumConcurrentRequests = maximumConcurrentRequests;
+        MaximumMatches = effectiveMaximumMatches;
+        MaximumRetainedBytes = maximumRetainedBytes;
     }
 
     public int MaximumContainers { get; }
 
     public int MaximumItems { get; }
+
+    public TimeSpan MaximumDuration { get; }
+
+    public int MaximumConcurrentRequests { get; }
+
+    public int MaximumMatches { get; }
+
+    public long MaximumRetainedBytes { get; }
 }
 
 /// <summary>A search request against a browser source or loaded tree.</summary>

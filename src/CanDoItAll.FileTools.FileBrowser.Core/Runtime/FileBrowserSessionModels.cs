@@ -19,7 +19,8 @@ public sealed record FileBrowserSessionOptions
         FileBrowserSortDescriptor? defaultSort = null,
         FileBrowserMetadataRequest? metadata = null,
         FileBrowserTreeStoreOptions? cache = null,
-        FileBrowserStateRetentionMode retentionMode = FileBrowserStateRetentionMode.Bounded)
+        FileBrowserStateRetentionMode retentionMode = FileBrowserStateRetentionMode.Bounded,
+        FileBrowserSearchBudget? searchBudget = null)
     {
         if (pageSize is < 1 or > 1000)
         {
@@ -36,6 +37,7 @@ public sealed record FileBrowserSessionOptions
         Metadata = metadata ?? FileBrowserMetadataRequest.Standard;
         Cache = cache ?? new FileBrowserTreeStoreOptions();
         RetentionMode = retentionMode;
+        SearchBudget = searchBudget ?? new FileBrowserSearchBudget();
     }
 
     public int PageSize { get; }
@@ -47,6 +49,8 @@ public sealed record FileBrowserSessionOptions
     public FileBrowserTreeStoreOptions Cache { get; }
 
     public FileBrowserStateRetentionMode RetentionMode { get; }
+
+    public FileBrowserSearchBudget SearchBudget { get; }
 }
 
 /// <summary>Immutable projection of an active search.</summary>
@@ -58,7 +62,11 @@ public sealed record FileBrowserSearchSnapshot(
     int ScannedContainers,
     int ScannedItems,
     string? NextContinuationToken,
-    long? TotalCount);
+    long? TotalCount,
+    int RetainedItems = 0,
+    long RetainedBytes = 0,
+    int PeakConcurrentRequests = 0,
+    TimeSpan Elapsed = default);
 
 /// <summary>Immutable renderer-facing browser state.</summary>
 public sealed record FileBrowserSnapshot

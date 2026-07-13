@@ -27,6 +27,11 @@ public sealed class FileBrowserItemComparer : IComparer<FileBrowserItem>
             return 1;
         }
 
+        if (sort.Field == FileBrowserSortField.ProviderNative)
+        {
+            return 0;
+        }
+
         if (sort.FoldersFirst && x.IsContainer != y.IsContainer)
         {
             return x.IsContainer ? -1 : 1;
@@ -86,6 +91,11 @@ public static class FileBrowserItemOrdering
         FileBrowserSortDescriptor? sort = null)
     {
         ArgumentNullException.ThrowIfNull(items);
+        if (sort?.Field == FileBrowserSortField.ProviderNative)
+        {
+            return items.ToArray();
+        }
+
         return items.Order(new FileBrowserItemComparer(sort)).ToArray();
     }
 }

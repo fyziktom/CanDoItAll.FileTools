@@ -154,6 +154,26 @@ public sealed class FileBrowserComponentContractTests
     }
 
     [Fact]
+    public void CompactStyles_BoundSourceNavigationToItsContentHeight()
+    {
+        string markup = File.ReadAllText(Path.Combine(
+            TestPaths.ComponentsSource,
+            "Components",
+            "FileBrowser.razor"));
+        string styles = File.ReadAllText(Path.Combine(
+            TestPaths.ComponentsSource,
+            "Components",
+            "FileBrowser.razor.css"));
+
+        Assert.Contains("has-source-navigation", markup, StringComparison.Ordinal);
+        Assert.Contains(
+            ".ft-file-browser[data-display-mode=\"compact\"] .ft-file-browser__layout.has-source-navigation",
+            styles,
+            StringComparison.Ordinal);
+        Assert.Contains("grid-template-rows: auto minmax(0, 1fr);", styles, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Markup_CoversOperationalStatesAndProviderNeutralRecursion()
     {
         string rootMarkup = File.ReadAllText(Path.Combine(TestPaths.ComponentsSource, "Components", "FileBrowser.razor"));

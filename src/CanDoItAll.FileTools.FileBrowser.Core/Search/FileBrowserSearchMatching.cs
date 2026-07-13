@@ -32,7 +32,9 @@ internal static class FileBrowserSearchMatching
             scannedContainers,
             scannedItems,
             request.ConsistencyToken,
-            warnings);
+            warnings,
+            retainedItems: page.Length,
+            retainedBytes: FileBrowserSearchRetentionMeasure.Measure(page));
     }
 
     public static bool MatchesText(FileBrowserItem item, string query)

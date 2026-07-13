@@ -99,6 +99,7 @@ public enum FileBrowserSourceCapabilities
 /// <summary>Fields supported for deterministic sorting.</summary>
 public enum FileBrowserSortField
 {
+    ProviderNative,
     Name,
     ModifiedAt,
     Size,

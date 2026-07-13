@@ -9,6 +9,9 @@ internal sealed record ProgressiveSearchSnapshot(
     bool IsPartial,
     int ScannedContainers,
     int ScannedItems,
+    long RetainedBytes,
+    int PeakConcurrentRequests,
+    TimeSpan Elapsed,
     string? ConsistencyToken,
     IReadOnlyList<FileBrowserPageWarning> Warnings);
 
@@ -19,6 +22,9 @@ internal sealed record ProgressiveSearchContinuation(
     bool IsPartial,
     int ScannedContainers,
     int ScannedItems,
+    long RetainedBytes,
+    int PeakConcurrentRequests,
+    TimeSpan Elapsed,
     string? ConsistencyToken,
     IReadOnlyList<FileBrowserPageWarning> Warnings);
 
@@ -161,6 +167,9 @@ internal sealed class ProgressiveSearchContinuationStore
                 search.Snapshot.IsPartial,
                 search.Snapshot.ScannedContainers,
                 search.Snapshot.ScannedItems,
+                search.Snapshot.RetainedBytes,
+                search.Snapshot.PeakConcurrentRequests,
+                search.Snapshot.Elapsed,
                 search.Snapshot.ConsistencyToken,
                 search.Snapshot.Warnings);
             cancellationToken.ThrowIfCancellationRequested();

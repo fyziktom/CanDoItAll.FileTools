@@ -5,7 +5,7 @@
          data-view-mode="@viewMode.ToString().ToLowerInvariant()"
          aria-label="@AriaLabel"
          aria-busy="@snapshot.IsBusy">
-    <div class="ft-file-browser__layout @(snapshot.Sources.Count == 0 ? "has-no-sources" : null)">
+    <div class="ft-file-browser__layout @(snapshot.Sources.Count == 0 ? "has-no-sources" : HasSourceNavigation ? "has-source-navigation" : null)">
         <FileBrowserSourceNavigation Snapshot="snapshot"
                                      DisplayMode="DisplayMode"
                                      SourceChanged="ChangeSourceAsync" />

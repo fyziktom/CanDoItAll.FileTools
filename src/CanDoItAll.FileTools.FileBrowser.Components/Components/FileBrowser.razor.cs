@@ -319,6 +319,9 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
     private bool HasActiveLocation
         => snapshot.CurrentSource is not null && snapshot.Location is not null;
 
+    private bool HasSourceNavigation
+        => snapshot.Sources.Count > 1 || snapshot.CurrentSource is not null;
+
     private static FileBrowserSortDirection Reverse(FileBrowserSortDirection direction)
         => direction == FileBrowserSortDirection.Ascending
             ? FileBrowserSortDirection.Descending

@@ -7,6 +7,7 @@
 public sealed class ProgressiveFileBrowserSearchStrategy : IFileBrowserSearchStrategy
 {
     private readonly ProgressiveSearchContinuationStore continuations;
+    private readonly TimeProvider timeProvider;
 
     /// <summary>Creates a strategy with bounded, expiring continuation state.</summary>
     /// <param name="maximumRetainedSearches">
@@ -21,10 +22,11 @@ public sealed class ProgressiveFileBrowserSearchStrategy : IFileBrowserSearchStr
         TimeSpan? retention = null,
         TimeProvider? timeProvider = null)
     {
+        this.timeProvider = timeProvider ?? TimeProvider.System;
         continuations = new ProgressiveSearchContinuationStore(
             maximumRetainedSearches,
             retention ?? TimeSpan.FromMinutes(15),
-            timeProvider ?? TimeProvider.System);
+            this.timeProvider);
     }
 
     public string Id => "progressive-breadth-first";
@@ -59,7 +61,13 @@ public sealed class ProgressiveFileBrowserSearchStrategy : IFileBrowserSearchStr
                 continuation.ScannedContainers,
                 continuation.ScannedItems,
                 continuation.ConsistencyToken,
-                continuation.Warnings);
+                continuation.Warnings,
+                continuation.TotalCount > int.MaxValue
+                    ? int.MaxValue
+                    : (int)continuation.TotalCount,
+                continuation.RetainedBytes,
+                continuation.PeakConcurrentRequests,
+                continuation.Elapsed);
         }
 
         ProgressiveSearchSnapshot snapshot = await CaptureSnapshotAsync(context, cancellationToken);
@@ -84,10 +92,14 @@ public sealed class ProgressiveFileBrowserSearchStrategy : IFileBrowserSearchStr
             snapshot.ScannedContainers,
             snapshot.ScannedItems,
             snapshot.ConsistencyToken,
-            snapshot.Warnings);
+            snapshot.Warnings,
+            snapshot.Matches.Count,
+            snapshot.RetainedBytes,
+            snapshot.PeakConcurrentRequests,
+            snapshot.Elapsed);
     }
 
-    private static async ValueTask<ProgressiveSearchSnapshot> CaptureSnapshotAsync(
+    private async ValueTask<ProgressiveSearchSnapshot> CaptureSnapshotAsync(
         FileBrowserSearchStrategyContext context,
         CancellationToken cancellationToken)
     {
@@ -102,96 +114,128 @@ public sealed class ProgressiveFileBrowserSearchStrategy : IFileBrowserSearchStr
         var warnings = new List<FileBrowserPageWarning>();
         var scannedContainers = 0;
         var scannedItems = 0;
+        long retainedBytes = 0;
+        var browseRequests = 0;
         var budgetReached = false;
         var rootConsistencyToken = context.Request.ConsistencyToken;
         queue.Enqueue(context.Request.ContainerKey);
 
-        while (queue.Count > 0 && !budgetReached)
+        long started = timeProvider.GetTimestamp();
+        using var durationCancellation = new CancellationTokenSource(
+            context.Request.Budget.MaximumDuration,
+            timeProvider);
+        using var operationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            durationCancellation.Token);
+        CancellationToken operationToken = operationCancellation.Token;
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var containerKey = queue.Dequeue();
-            if (!visitedContainers.Add(containerKey))
+            while (queue.Count > 0 && !budgetReached)
             {
-                continue;
-            }
-
-            if (scannedContainers >= context.Request.Budget.MaximumContainers)
-            {
-                budgetReached = true;
-                break;
-            }
-
-            scannedContainers++;
-
-            string? continuationToken = null;
-            var observedContinuationTokens = new HashSet<string>(StringComparer.Ordinal);
-            var containerConsistencyToken = containerKey == context.Request.ContainerKey
-                ? rootConsistencyToken
-                : null;
-            do
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var browseRequest = new FileBrowserBrowseRequest(
-                    containerKey,
-                    Math.Min(
-                        context.Provider.Descriptor.MaximumPageSize,
-                        context.Provider.Descriptor.RecommendedPageSize),
-                    continuationToken,
-                    context.Request.Sort,
-                    FileBrowserFilter.None,
-                    includeDescendants: false,
-                    containerConsistencyToken,
-                    context.Request.Metadata);
-                var page = await context.Data.BrowseAndCacheAsync(
-                    browseRequest,
-                    continuationToken is null ? FileBrowserPageApplyMode.Replace : FileBrowserPageApplyMode.Append,
-                    cancellationToken);
-                cancellationToken.ThrowIfCancellationRequested();
-                FileBrowserProviderResponseValidator.ValidateBrowsePage(browseRequest, page);
-                FileBrowserProviderResponseValidator.ValidateCursorNotPreviouslyObserved(
-                    page.NextContinuationToken,
-                    observedContinuationTokens);
-                if (page.NextContinuationToken is not null)
+                operationToken.ThrowIfCancellationRequested();
+                var containerKey = queue.Dequeue();
+                if (!visitedContainers.Add(containerKey))
                 {
-                    observedContinuationTokens.Add(page.NextContinuationToken);
+                    continue;
                 }
 
-                warnings.AddRange(page.Warnings);
-                containerConsistencyToken = page.ConsistencyToken ?? containerConsistencyToken;
-                if (containerKey == context.Request.ContainerKey)
+                if (scannedContainers >= context.Request.Budget.MaximumContainers)
                 {
-                    rootConsistencyToken = containerConsistencyToken;
+                    budgetReached = true;
+                    break;
                 }
 
-                foreach (var item in page.Items)
+                scannedContainers++;
+
+                string? continuationToken = null;
+                var observedContinuationTokens = new HashSet<string>(StringComparer.Ordinal);
+                var containerConsistencyToken = containerKey == context.Request.ContainerKey
+                    ? rootConsistencyToken
+                    : null;
+                do
                 {
-                    if (!visitedItems.Add(item.Key))
+                    operationToken.ThrowIfCancellationRequested();
+                    var browseRequest = new FileBrowserBrowseRequest(
+                        containerKey,
+                        Math.Min(
+                            context.Provider.Descriptor.MaximumPageSize,
+                            context.Provider.Descriptor.RecommendedPageSize),
+                        continuationToken,
+                        context.Request.Sort,
+                        FileBrowserFilter.None,
+                        includeDescendants: false,
+                        containerConsistencyToken,
+                        context.Request.Metadata);
+                    browseRequests++;
+                    var page = await context.Data.BrowseAndCacheAsync(
+                        browseRequest,
+                        continuationToken is null ? FileBrowserPageApplyMode.Replace : FileBrowserPageApplyMode.Append,
+                        operationToken);
+                    operationToken.ThrowIfCancellationRequested();
+                    FileBrowserProviderResponseValidator.ValidateBrowsePage(browseRequest, page);
+                    FileBrowserProviderResponseValidator.ValidateCursorNotPreviouslyObserved(
+                        page.NextContinuationToken,
+                        observedContinuationTokens);
+                    if (page.NextContinuationToken is not null)
                     {
-                        continue;
+                        observedContinuationTokens.Add(page.NextContinuationToken);
                     }
 
-                    scannedItems++;
-                    if (context.Request.Filter.Matches(item)
-                        && FileBrowserSearchMatching.MatchesText(item, context.Request.Query))
+                    warnings.AddRange(page.Warnings);
+                    containerConsistencyToken = page.ConsistencyToken ?? containerConsistencyToken;
+                    if (containerKey == context.Request.ContainerKey)
                     {
-                        matches.Add(item);
+                        rootConsistencyToken = containerConsistencyToken;
                     }
 
-                    if (item.IsContainer)
+                    foreach (var item in page.Items)
                     {
-                        queue.Enqueue(item.Key);
+                        if (!visitedItems.Add(item.Key))
+                        {
+                            continue;
+                        }
+
+                        scannedItems++;
+                        if (context.Request.Filter.Matches(item)
+                            && FileBrowserSearchMatching.MatchesText(item, context.Request.Query))
+                        {
+                            long itemBytes = FileBrowserSearchRetentionMeasure.Measure(item);
+                            if (itemBytes > context.Request.Budget.MaximumRetainedBytes - retainedBytes)
+                            {
+                                budgetReached = true;
+                                break;
+                            }
+
+                            matches.Add(item);
+                            retainedBytes += itemBytes;
+                            if (matches.Count >= context.Request.Budget.MaximumMatches)
+                            {
+                                budgetReached = true;
+                                break;
+                            }
+                        }
+
+                        if (item.IsContainer)
+                        {
+                            queue.Enqueue(item.Key);
+                        }
+
+                        if (scannedItems >= context.Request.Budget.MaximumItems)
+                        {
+                            budgetReached = true;
+                            break;
+                        }
                     }
 
-                    if (scannedItems >= context.Request.Budget.MaximumItems)
-                    {
-                        budgetReached = true;
-                        break;
-                    }
+                    continuationToken = budgetReached ? null : page.NextContinuationToken;
                 }
-
-                continuationToken = budgetReached ? null : page.NextContinuationToken;
+                while (continuationToken is not null);
             }
-            while (continuationToken is not null);
+        }
+        catch (OperationCanceledException) when (
+            durationCancellation.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            budgetReached = true;
         }
 
         if (budgetReached)
@@ -202,11 +246,15 @@ public sealed class ProgressiveFileBrowserSearchStrategy : IFileBrowserSearchStr
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        TimeSpan elapsed = timeProvider.GetElapsedTime(started);
         return new ProgressiveSearchSnapshot(
             FileBrowserItemOrdering.Apply(matches, context.Request.Sort).ToArray(),
             budgetReached,
             scannedContainers,
             scannedItems,
+            retainedBytes,
+            browseRequests == 0 ? 0 : 1,
+            elapsed,
             rootConsistencyToken,
             warnings.ToArray());
     }

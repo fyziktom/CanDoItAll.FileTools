@@ -356,7 +356,7 @@ public sealed class SearchStrategyTests
                 call.Request.ParentKey == RootKey ? "tree-revision-3" : null,
                 call.Request.ConsistencyToken);
             Assert.Same(metadata, call.Request.Metadata);
-            Assert.Equal(cancellation.Token, call.CancellationToken);
+            Assert.True(call.CancellationToken.CanBeCanceled);
         }
 
         Assert.Equal(0, data.GetLoadedDescendantsCallCount);
@@ -528,6 +528,106 @@ public sealed class SearchStrategyTests
         BrowseCall call = Assert.Single(data.BrowseCalls);
         AssertBrowseCall(call, RootKey, null, FileBrowserPageApplyMode.Replace);
         AssertNoProviderIo(provider);
+    }
+
+    [Fact]
+    public async Task ProgressiveSearchStopsAtMatchBudgetAndReportsRetainedState()
+    {
+        var data = new RecordingSearchData(pages:
+        [
+            new FileBrowserPage(
+            [
+                File("one", "match-one.cs"),
+                File("two", "match-two.cs"),
+                File("three", "match-three.cs")
+            ])
+        ]);
+        var provider = new RecordingProvider(CreateDescriptor(recommendedPageSize: 10, maximumPageSize: 10));
+        var request = SearchRequest(
+            "match",
+            FileBrowserSearchScope.Progressive,
+            pageSize: 10,
+            budget: new FileBrowserSearchBudget(
+                maximumContainers: 10,
+                maximumItems: 100,
+                maximumMatches: 2,
+                maximumRetainedBytes: 64 * 1024));
+
+        FileBrowserSearchPage result = await new ProgressiveFileBrowserSearchStrategy().SearchAsync(
+            new FileBrowserSearchStrategyContext(provider, data, request));
+
+        Assert.Equal(["match-one.cs", "match-two.cs"], Names(result));
+        Assert.True(result.IsPartial);
+        Assert.Equal(2, result.ScannedItems);
+        Assert.Equal(2, result.RetainedItems);
+        Assert.InRange(result.RetainedBytes, 1, request.Budget.MaximumRetainedBytes);
+        Assert.Equal(1, result.PeakConcurrentRequests);
+        Assert.Contains(result.Warnings, warning => warning.Code == "search-budget-reached");
+    }
+
+    [Fact]
+    public async Task ProgressiveSearchStopsBeforeRetainedByteBudgetIsExceeded()
+    {
+        FileBrowserItem first = File("one", $"match-{new string('a', 256)}.cs");
+        long firstBytes = FileBrowserSearchRetentionMeasure.Measure(first);
+        var data = new RecordingSearchData(pages:
+        [
+            new FileBrowserPage(
+            [
+                first,
+                File("two", $"match-{new string('b', 256)}.cs")
+            ])
+        ]);
+        var provider = new RecordingProvider(CreateDescriptor(recommendedPageSize: 10, maximumPageSize: 10));
+        var request = SearchRequest(
+            "match",
+            FileBrowserSearchScope.Progressive,
+            pageSize: 10,
+            budget: new FileBrowserSearchBudget(
+                maximumContainers: 10,
+                maximumItems: 100,
+                maximumMatches: 10,
+                maximumRetainedBytes: firstBytes));
+
+        FileBrowserSearchPage result = await new ProgressiveFileBrowserSearchStrategy().SearchAsync(
+            new FileBrowserSearchStrategyContext(provider, data, request));
+
+        Assert.Equal([first.Name], Names(result));
+        Assert.True(result.IsPartial);
+        Assert.Equal(1, result.RetainedItems);
+        Assert.Equal(firstBytes, result.RetainedBytes);
+        Assert.Contains(result.Warnings, warning => warning.Code == "search-budget-reached");
+    }
+
+    [Fact]
+    public async Task ProgressiveSearchDurationBudgetCancelsInFlightBrowseAndReturnsPartialState()
+    {
+        var data = new RecordingSearchData
+        {
+            BrowseHandler = async (_, _, cancellationToken) =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                return new FileBrowserPage([]);
+            }
+        };
+        var provider = new RecordingProvider(CreateDescriptor());
+        var request = SearchRequest(
+            "match",
+            FileBrowserSearchScope.Progressive,
+            budget: new FileBrowserSearchBudget(
+                maximumContainers: 10,
+                maximumItems: 100,
+                maximumDuration: TimeSpan.FromMilliseconds(50)));
+
+        FileBrowserSearchPage result = await new ProgressiveFileBrowserSearchStrategy().SearchAsync(
+            new FileBrowserSearchStrategyContext(provider, data, request));
+
+        Assert.True(result.IsPartial);
+        Assert.Empty(result.Items);
+        Assert.Equal(1, result.ScannedContainers);
+        Assert.Equal(0, result.ScannedItems);
+        Assert.True(result.Elapsed >= TimeSpan.FromMilliseconds(40));
+        Assert.Contains(result.Warnings, warning => warning.Code == "search-budget-reached");
     }
 
     [Fact]
@@ -996,7 +1096,7 @@ public sealed class SearchStrategyTests
 
         BrowseCall call = Assert.Single(data.BrowseCalls);
         AssertBrowseCall(call, RootKey, null, FileBrowserPageApplyMode.Replace);
-        Assert.Equal(cancellation.Token, call.CancellationToken);
+        Assert.True(call.CancellationToken.CanBeCanceled);
         AssertNoProviderIo(provider);
     }
 

@@ -228,9 +228,49 @@ public sealed class FileBrowserSessionBoundaryTests
         Assert.True(session.Snapshot.Search!.IsPartial);
         Assert.Equal(2, session.Snapshot.Search.ScannedContainers);
         Assert.Equal(5, session.Snapshot.Search.ScannedItems);
+        Assert.Equal(
+            FileBrowserSearchRetentionMeasure.Measure([first, overlap, last]),
+            session.Snapshot.Search.RetainedBytes);
         Assert.Equal(3, session.Snapshot.TotalCount);
         Assert.Equal([firstWarning, secondWarning], session.Snapshot.Warnings);
         Assert.Null(session.Snapshot.Error);
+    }
+
+    [Fact]
+    public async Task SessionForwardsConfiguredSearchBudgetAndPublishesRetentionDiagnostics()
+    {
+        var root = TestFileBrowserFactory.Container("root");
+        var match = TestFileBrowserFactory.File("match", root.Key, "match.txt");
+        FileBrowserSearchBudget? observedBudget = null;
+        var provider = CreateNativeProvider(
+            root,
+            request =>
+            {
+                observedBudget = request.Budget;
+                return new FileBrowserSearchPage(
+                    [match],
+                    "native-index",
+                    scannedContainers: 1,
+                    scannedItems: 3);
+            });
+        var budget = new FileBrowserSearchBudget(
+            maximumContainers: 7,
+            maximumItems: 31,
+            maximumDuration: TimeSpan.FromSeconds(2),
+            maximumConcurrentRequests: 1,
+            maximumMatches: 5,
+            maximumRetainedBytes: 4096);
+        await using var session = new FileBrowserSession(
+            [provider],
+            new FileBrowserSessionOptions(pageSize: 2, searchBudget: budget));
+        await session.InitializeAsync();
+
+        await session.SearchAsync("match", FileBrowserSearchScope.Provider);
+
+        Assert.Same(budget, observedBudget);
+        Assert.Equal(1, session.Snapshot.Search!.RetainedItems);
+        Assert.InRange(session.Snapshot.Search.RetainedBytes, 1, budget.MaximumRetainedBytes);
+        Assert.Equal(0, session.Snapshot.Search.PeakConcurrentRequests);
     }
 
     [Fact]

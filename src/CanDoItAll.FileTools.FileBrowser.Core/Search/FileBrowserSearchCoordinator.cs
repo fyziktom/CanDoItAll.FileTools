@@ -45,7 +45,11 @@ public sealed class FileBrowserSearchCoordinator
             page.ScannedContainers,
             page.ScannedItems,
             page.NextContinuationToken,
-            page.TotalCount);
+            page.TotalCount,
+            page.RetainedItems,
+            page.RetainedBytes,
+            page.PeakConcurrentRequests,
+            page.Elapsed);
 
     public IReadOnlyList<FileBrowserSearchScope> GetAvailable(IFileBrowserProvider provider)
         => strategies.GetAvailable(provider);
@@ -71,6 +75,7 @@ public sealed class FileBrowserSearchCoordinator
             Math.Min(options.PageSize, provider.Descriptor.MaximumPageSize),
             sort: sort,
             filter: filter,
+            budget: options.SearchBudget,
             consistencyToken: activeContainer.ConsistencyToken,
             metadata: options.Metadata);
         var data = new SearchData(loader, provider, activeContainer);
@@ -79,10 +84,11 @@ public sealed class FileBrowserSearchCoordinator
             cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         request = nextRequest;
-        page = nextPage;
-        visibleItems = nextPage.Items;
+        FileBrowserSearchPage retainedPage = ApplyRetentionBudget(nextPage, nextRequest.Budget);
+        page = retainedPage;
+        visibleItems = retainedPage.Items;
         continuationTokens.Clear();
-        Register(nextPage.NextContinuationToken);
+        Register(retainedPage.NextContinuationToken);
     }
 
     public async ValueTask LoadMoreAsync(
@@ -102,7 +108,12 @@ public sealed class FileBrowserSearchCoordinator
             new FileBrowserSearchStrategyContext(provider, data, nextRequest),
             cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
-        FileBrowserSearchPage merged = Merge(page, visibleItems, incoming, continuationTokens);
+        FileBrowserSearchPage merged = Merge(
+            page,
+            visibleItems,
+            incoming,
+            continuationTokens,
+            request.Budget);
         request = nextRequest;
         page = merged;
         visibleItems = merged.Items;
@@ -146,7 +157,8 @@ public sealed class FileBrowserSearchCoordinator
         FileBrowserSearchPage existing,
         IReadOnlyList<FileBrowserItem> currentItems,
         FileBrowserSearchPage incoming,
-        IReadOnlySet<string> observedTokens)
+        IReadOnlySet<string> observedTokens,
+        FileBrowserSearchBudget budget)
     {
         if (!string.Equals(existing.StrategyId, incoming.StrategyId, StringComparison.Ordinal))
         {
@@ -176,7 +188,7 @@ public sealed class FileBrowserSearchCoordinator
                 "The provider returned a total count smaller than the accumulated search result.");
         }
 
-        return new FileBrowserSearchPage(
+        return ApplyRetentionBudget(new FileBrowserSearchPage(
             mergedItems,
             existing.StrategyId,
             incoming.NextContinuationToken,
@@ -185,7 +197,69 @@ public sealed class FileBrowserSearchCoordinator
             Math.Max(existing.ScannedContainers, incoming.ScannedContainers),
             Math.Max(existing.ScannedItems, incoming.ScannedItems),
             incoming.ConsistencyToken ?? existing.ConsistencyToken,
-            FileBrowserProviderResponseValidator.MergeWarnings(existing.Warnings, incoming.Warnings));
+            FileBrowserProviderResponseValidator.MergeWarnings(existing.Warnings, incoming.Warnings),
+            retainedItems: Math.Max(existing.RetainedItems, incoming.RetainedItems),
+            retainedBytes: Math.Max(existing.RetainedBytes, incoming.RetainedBytes),
+            peakConcurrentRequests: Math.Max(
+                existing.PeakConcurrentRequests,
+                incoming.PeakConcurrentRequests),
+            elapsed: existing.Elapsed >= incoming.Elapsed ? existing.Elapsed : incoming.Elapsed),
+            budget);
+    }
+
+    private static FileBrowserSearchPage ApplyRetentionBudget(
+        FileBrowserSearchPage page,
+        FileBrowserSearchBudget budget)
+    {
+        var retained = new List<FileBrowserItem>(Math.Min(page.Items.Count, budget.MaximumMatches));
+        long retainedBytes = 0;
+        bool budgetReached = false;
+        foreach (FileBrowserItem item in page.Items)
+        {
+            long itemBytes = FileBrowserSearchRetentionMeasure.Measure(item);
+            if (retained.Count >= budget.MaximumMatches ||
+                itemBytes > budget.MaximumRetainedBytes - retainedBytes)
+            {
+                budgetReached = true;
+                break;
+            }
+
+            retained.Add(item);
+            retainedBytes += itemBytes;
+        }
+
+        int reportedRetainedItems = Math.Max(page.RetainedItems, retained.Count);
+        long reportedRetainedBytes = Math.Max(page.RetainedBytes, retainedBytes);
+        if (reportedRetainedItems > budget.MaximumMatches ||
+            reportedRetainedBytes > budget.MaximumRetainedBytes ||
+            page.PeakConcurrentRequests > budget.MaximumConcurrentRequests)
+        {
+            throw new FileBrowserProviderException(new FileBrowserError(
+                FileBrowserErrorCode.RateLimited,
+                "The search provider exceeded the configured work or retention budget."));
+        }
+
+        IReadOnlyList<FileBrowserPageWarning> warnings = budgetReached
+            ? FileBrowserProviderResponseValidator.MergeWarnings(
+                page.Warnings,
+                [new FileBrowserPageWarning(
+                    "search-retention-budget-reached",
+                    "Search result retention reached the configured match or byte limit.")])
+            : page.Warnings;
+        return new FileBrowserSearchPage(
+            retained,
+            page.StrategyId,
+            budgetReached ? null : page.NextContinuationToken,
+            page.TotalCount,
+            page.IsPartial || budgetReached,
+            page.ScannedContainers,
+            page.ScannedItems,
+            page.ConsistencyToken,
+            warnings,
+            budgetReached ? retained.Count : reportedRetainedItems,
+            budgetReached ? retainedBytes : reportedRetainedBytes,
+            page.PeakConcurrentRequests,
+            page.Elapsed);
     }
 
     private sealed class SearchData : IFileBrowserSearchData

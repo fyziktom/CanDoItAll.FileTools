@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace CanDoItAll.FileTools.FileBrowser.Components.Tests;
 
 public sealed class FileBrowserDisplayFormatterTests
@@ -10,6 +12,24 @@ public sealed class FileBrowserDisplayFormatterTests
     [InlineData(1536L, "1.5 KB")]
     public void FormatSize_UsesCompactBinaryUnits(long? bytes, string expected)
         => Assert.Equal(expected, FileBrowserDisplayFormatter.FormatSize(bytes));
+
+    [Fact]
+    public void FormatSize_UsesInvariantOutputWhenCurrentCultureUsesDifferentSeparators()
+    {
+        CultureInfo originalCulture = CultureInfo.CurrentCulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("cs-CZ");
+
+            Assert.Equal("1,023 B", FileBrowserDisplayFormatter.FormatSize(1023));
+            Assert.Equal("1.5 KB", FileBrowserDisplayFormatter.FormatSize(1536));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+        }
+    }
 
     [Fact]
     public void FormatType_PrefersFolderThenMediaType()

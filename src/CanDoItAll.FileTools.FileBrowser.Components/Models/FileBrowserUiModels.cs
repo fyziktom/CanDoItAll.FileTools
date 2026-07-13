@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace CanDoItAll.FileTools.FileBrowser.Components;
 
 /// <summary>Controls the amount of browser chrome rendered for a host surface.</summary>
@@ -70,8 +72,8 @@ public static class FileBrowserDisplayFormatter
         }
 
         return unit == 0
-            ? $"{bytes.Value:N0} {Units[unit]}"
-            : $"{value:0.#} {Units[unit]}";
+            ? string.Create(CultureInfo.InvariantCulture, $"{bytes.Value:N0} {Units[unit]}")
+            : string.Create(CultureInfo.InvariantCulture, $"{value:0.#} {Units[unit]}");
     }
 
     public static string FormatDate(DateTimeOffset? value)

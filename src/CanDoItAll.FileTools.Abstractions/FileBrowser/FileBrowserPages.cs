@@ -61,11 +61,21 @@ public sealed record FileBrowserSearchPage
         int scannedContainers = 0,
         int scannedItems = 0,
         string? consistencyToken = null,
-        IEnumerable<FileBrowserPageWarning>? warnings = null)
+        IEnumerable<FileBrowserPageWarning>? warnings = null,
+        int? retainedItems = null,
+        long retainedBytes = 0,
+        int peakConcurrentRequests = 0,
+        TimeSpan elapsed = default)
     {
         ArgumentNullException.ThrowIfNull(items);
         ArgumentException.ThrowIfNullOrWhiteSpace(strategyId);
-        if (totalCount < 0 || scannedContainers < 0 || scannedItems < 0)
+        if (totalCount < 0 ||
+            scannedContainers < 0 ||
+            scannedItems < 0 ||
+            retainedItems < 0 ||
+            retainedBytes < 0 ||
+            peakConcurrentRequests < 0 ||
+            elapsed < TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(totalCount));
         }
@@ -79,6 +89,10 @@ public sealed record FileBrowserSearchPage
         ScannedItems = scannedItems;
         ConsistencyToken = string.IsNullOrWhiteSpace(consistencyToken) ? null : consistencyToken;
         Warnings = Array.AsReadOnly((warnings ?? []).ToArray());
+        RetainedItems = retainedItems ?? Items.Count;
+        RetainedBytes = retainedBytes;
+        PeakConcurrentRequests = peakConcurrentRequests;
+        Elapsed = elapsed;
     }
 
     public IReadOnlyList<FileBrowserItem> Items { get; }
@@ -98,6 +112,14 @@ public sealed record FileBrowserSearchPage
     public string? ConsistencyToken { get; }
 
     public IReadOnlyList<FileBrowserPageWarning> Warnings { get; }
+
+    public int RetainedItems { get; }
+
+    public long RetainedBytes { get; }
+
+    public int PeakConcurrentRequests { get; }
+
+    public TimeSpan Elapsed { get; }
 
     public bool HasMore => NextContinuationToken is not null;
 }

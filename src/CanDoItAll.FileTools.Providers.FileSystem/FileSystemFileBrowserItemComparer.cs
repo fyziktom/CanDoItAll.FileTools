@@ -29,6 +29,11 @@ internal sealed class FileSystemFileBrowserItemComparer : IComparer<FileBrowserI
             return 1;
         }
 
+        if (sort.Field == FileBrowserSortField.ProviderNative)
+        {
+            return 0;
+        }
+
         if (sort.FoldersFirst && x.IsContainer != y.IsContainer)
         {
             return x.IsContainer ? -1 : 1;
