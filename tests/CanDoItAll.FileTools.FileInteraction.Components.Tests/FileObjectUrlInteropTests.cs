@@ -190,7 +190,7 @@ public sealed class FileObjectUrlInteropTests : BunitContext
     }
 
     [Fact]
-    public async Task PdfTarget_RemainsHiddenUntilBrowserLoadAndUsesInertFallbackOnError()
+    public async Task PdfTarget_BecomesVisibleAfterBlobBindingAndUsesInertFallbackOnError()
     {
         var module = JSInterop.SetupModule(FileObjectUrlInterop.ModulePath);
         module.SetupVoid(FileObjectUrlInterop.ApplyMethod, _ => true).SetVoidResult();
@@ -208,8 +208,6 @@ public sealed class FileObjectUrlInteropTests : BunitContext
             .Add(component => component.Context, context)
             .Add(component => component.Kind, FileObjectViewKind.Pdf));
 
-        Assert.True(cut.Find("[data-testid='interaction-pdf-view']").HasAttribute("hidden"));
-        await cut.Find("object").TriggerEventAsync("onload", EventArgs.Empty);
         Assert.False(cut.Find("[data-testid='interaction-pdf-view']").HasAttribute("hidden"));
 
         await cut.Find("object").TriggerEventAsync("onerror", EventArgs.Empty);

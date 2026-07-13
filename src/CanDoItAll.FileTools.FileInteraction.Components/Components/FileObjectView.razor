@@ -136,7 +136,7 @@ else if (interopError is not null)
             activeTarget = target;
             hasActiveTarget = true;
             isApplying = false;
-            isReady = false;
+            isReady = Kind == FileObjectViewKind.Pdf;
             StateHasChanged();
         }
         catch (Exception exception) when (FileObjectUrlInterop.IsExpectedFailure(exception))
