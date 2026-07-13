@@ -1,4 +1,5 @@
 @implements IFileInteractionRendererComponent
+@inject IEnumerable<IMarkdownFencedCodeComponentRegistration> FencedCodeComponents
 
 @if (Context.Text is null)
 {
@@ -13,11 +14,66 @@ else if (Context.Text.Length == 0)
 else
 {
     <article class="cdi-ft-markdown" data-testid="interaction-markdown-view">
-        @MarkdownContentRenderer.ToMarkup(Context.Text)
+        @foreach (var segment in renderedSegments)
+        {
+            if (segment.HtmlContent is not null)
+            {
+                @((MarkupString)segment.HtmlContent)
+            }
+            else if (segment.FencedCodeBlock is { } fencedCodeBlock)
+            {
+                var registration = componentRegistrations[fencedCodeBlock.Language];
+                <DynamicComponent Type="registration.ComponentType"
+                                  Parameters="CreateComponentParameters(fencedCodeBlock)" />
+            }
+        }
     </article>
 }
 
 @code {
+    private IReadOnlyDictionary<string, IMarkdownFencedCodeComponentRegistration> componentRegistrations =
+        new Dictionary<string, IMarkdownFencedCodeComponentRegistration>(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyList<MarkdownRenderedSegment> renderedSegments = [];
+
     [Parameter, EditorRequired]
     public FileInteractionRenderContext Context { get; set; } = default!;
+
+    protected override void OnParametersSet()
+    {
+        componentRegistrations = FencedCodeComponents.ToDictionary(
+            registration => NormalizeRegistrationLanguage(registration),
+            StringComparer.OrdinalIgnoreCase);
+        renderedSegments = Context.Text is null
+            ? []
+            : MarkdownContentRenderer.ToSegments(
+                Context.Text,
+                componentRegistrations.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase));
+    }
+
+    private static string NormalizeRegistrationLanguage(IMarkdownFencedCodeComponentRegistration registration)
+    {
+        ArgumentNullException.ThrowIfNull(registration);
+        if (!MarkdownFencedCodeLanguage.TryNormalize(registration.Language, out var language) ||
+            !string.Equals(language, registration.Language.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Markdown fenced-code component languages must contain one language identifier.");
+        }
+
+        if (!typeof(IMarkdownFencedCodeComponent).IsAssignableFrom(registration.ComponentType))
+        {
+            throw new InvalidOperationException(
+                $"Markdown fenced-code component '{registration.ComponentType.FullName}' must implement {nameof(IMarkdownFencedCodeComponent)}.");
+        }
+
+        return language;
+    }
+
+    private Dictionary<string, object?> CreateComponentParameters(MarkdownFencedCodeBlock block) =>
+        new()
+        {
+            [nameof(IMarkdownFencedCodeComponent.Context)] = new MarkdownFencedCodeRenderContext(
+                Context,
+                block.Language,
+                block.Source)
+        };
 }

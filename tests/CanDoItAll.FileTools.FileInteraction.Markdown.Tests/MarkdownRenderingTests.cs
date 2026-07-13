@@ -21,11 +21,29 @@ public sealed class MarkdownRenderingTests
         var html = await RenderAsync(markdown);
 
         Assert.Contains("data-testid=\"interaction-markdown-view\"", html, StringComparison.Ordinal);
-        Assert.Contains("<h1>Heading</h1>", html, StringComparison.Ordinal);
+        Assert.Contains(">Heading</h1>", html, StringComparison.Ordinal);
         Assert.Contains("<strong>strong</strong>", html, StringComparison.Ordinal);
         Assert.Contains("<code>code</code>", html, StringComparison.Ordinal);
         Assert.Contains("<pre><code", html, StringComparison.Ordinal);
         Assert.Contains("var value = 1;", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Render_AdvancedTablesAndStrikethroughUseMarkdigExtensions()
+    {
+        const string markdown = """
+            | Layer | Owner |
+            | --- | --- |
+            | UI | Blazor |
+
+            ~~Legacy renderer~~
+            """;
+
+        var html = await RenderAsync(markdown);
+
+        Assert.Contains("<table>", html, StringComparison.Ordinal);
+        Assert.Contains("<td>UI</td>", html, StringComparison.Ordinal);
+        Assert.Contains("<del>Legacy renderer</del>", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -119,7 +137,7 @@ public sealed class MarkdownRenderingTests
         Assert.Contains("data-testid=\"interaction-text-editor\"", html, StringComparison.Ordinal);
         Assert.Contains("data-testid=\"interaction-preview\"", html, StringComparison.Ordinal);
         Assert.Contains("data-testid=\"interaction-markdown-view\"", html, StringComparison.Ordinal);
-        Assert.Contains("<h1>Live preview</h1>", html, StringComparison.Ordinal);
+        Assert.Contains(">Live preview</h1>", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -144,7 +162,7 @@ public sealed class MarkdownRenderingTests
         var html = await RenderComponentAsync<FileInteractionComponent>(parameters);
 
         Assert.Contains("data-testid=\"interaction-markdown-view\"", html, StringComparison.Ordinal);
-        Assert.Contains("<h1>Rendered heading</h1>", html, StringComparison.Ordinal);
+        Assert.Contains(">Rendered heading</h1>", html, StringComparison.Ordinal);
         Assert.DoesNotContain("data-testid=\"interaction-text-view\"", html, StringComparison.Ordinal);
     }
 

@@ -11,7 +11,12 @@ var composition = new FileInteractionComponentBuilder()
 
 `AddMarkdown` contributes a higher-priority `.md`, `.markdown`, and `text/markdown` profile. It
 uses the base text editor and bounded history factory, while its Markdown viewer is also used by
-the debounced split preview.
+the debounced split preview. Rendering uses Markdig with the advanced extension set for tables,
+strikethrough, auto identifiers, and the other supported Markdown extensions.
+
+Hosts can register `IMarkdownFencedCodeComponentRegistration` implementations to render selected
+fenced-code languages through typed Blazor components. Unregistered languages remain ordinary
+Markdig code blocks.
 
 The viewer deliberately has no navigation or remote-fetch authority. Raw HTML is disabled and
 all Markdown links, autolinks, and images render as inert labels without `href` or `src`. A host

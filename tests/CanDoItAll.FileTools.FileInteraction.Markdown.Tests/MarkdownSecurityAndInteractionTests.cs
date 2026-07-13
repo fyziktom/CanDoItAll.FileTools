@@ -3,6 +3,9 @@ using CanDoItAll.FileTools.FileInteraction;
 using CanDoItAll.FileTools.FileInteraction.Components;
 using CanDoItAll.FileTools.FileInteraction.Markdown;
 using CanDoItAll.FileTools.FileInteraction.Markdown.Components;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.Extensions.DependencyInjection;
 using FileInteractionComponent = CanDoItAll.FileTools.FileInteraction.Components.FileInteraction;
 
 namespace CanDoItAll.FileTools.FileInteraction.Markdown.Tests;
@@ -106,6 +109,41 @@ public sealed class MarkdownSecurityAndInteractionTests : BunitContext
         Assert.Empty(cut.FindAll("[data-testid='interaction-preview'] h1"));
     }
 
+    [Fact]
+    public void AdvancedMarkdownAndRegisteredFencedCode_RenderThroughMarkdigAndTypedComponent()
+    {
+        Services.AddSingleton<IMarkdownFencedCodeComponentRegistration>(new TestMermaidRegistration());
+        const string markdown = """
+            # Architecture
+
+            | Layer | Owner |
+            | --- | --- |
+            | UI | Blazor |
+
+            ~~Legacy renderer~~
+
+            See [the architecture][architecture].
+
+            ```mermaid
+            flowchart LR
+                UI --> Application
+            ```
+
+            [architecture]: https://example.test/architecture
+            """;
+
+        var cut = RenderMarkdown(markdown);
+
+        Assert.Equal("Architecture", cut.Find("h1").TextContent);
+        Assert.Equal("UI", cut.Find("table tbody tr td").TextContent);
+        Assert.Equal("Legacy renderer", cut.Find("del").TextContent);
+        Assert.Equal("the architecture", cut.Find(".cdi-ft-markdown__link-label").TextContent);
+        Assert.Empty(cut.FindAll("a"));
+        var mermaid = cut.FindComponent<TestMermaidComponent>();
+        Assert.Equal("mermaid", mermaid.Instance.Context.Language);
+        Assert.Equal("flowchart LR\n    UI --> Application", mermaid.Instance.Context.Source);
+    }
+
     private IRenderedComponent<MarkdownFileView> RenderMarkdown(string markdown)
         => Render<MarkdownFileView>(parameters => parameters.Add(
             component => component.Context,
@@ -136,6 +174,27 @@ public sealed class MarkdownSecurityAndInteractionTests : BunitContext
                 new MemoryStream(content, writable: false),
                 "text/markdown",
                 content.Length));
+        }
+    }
+
+    private sealed class TestMermaidRegistration : IMarkdownFencedCodeComponentRegistration
+    {
+        public string Language => "mermaid";
+
+        public Type ComponentType => typeof(TestMermaidComponent);
+    }
+
+    private sealed class TestMermaidComponent : ComponentBase, IMarkdownFencedCodeComponent
+    {
+        [Parameter, EditorRequired]
+        public MarkdownFencedCodeRenderContext Context { get; set; } = default!;
+
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
+        {
+            builder.OpenElement(0, "pre");
+            builder.AddAttribute(1, "data-testid", "test-mermaid-component");
+            builder.AddContent(2, Context.Source);
+            builder.CloseElement();
         }
     }
 }

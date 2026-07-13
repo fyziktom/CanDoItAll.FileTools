@@ -2,8 +2,9 @@ using Markdig;
 using Markdig.Renderers;
 using Markdig.Renderers.Html;
 using Markdig.Renderers.Html.Inlines;
+using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
-using Microsoft.AspNetCore.Components;
+using System.Globalization;
 
 namespace CanDoItAll.FileTools.FileInteraction.Markdown;
 
@@ -14,14 +15,96 @@ namespace CanDoItAll.FileTools.FileInteraction.Markdown;
 internal static class MarkdownContentRenderer
 {
     private static readonly MarkdownPipeline pipeline = new MarkdownPipelineBuilder()
+        .UseAdvancedExtensions()
         .DisableHtml()
         .Use(new InertLinkPipelineExtension())
         .Build();
 
-    public static MarkupString ToMarkup(string markdown)
+    public static IReadOnlyList<MarkdownRenderedSegment> ToSegments(
+        string markdown,
+        IReadOnlySet<string> componentLanguages)
     {
         ArgumentNullException.ThrowIfNull(markdown);
-        return new MarkupString(global::Markdig.Markdown.ToHtml(markdown, pipeline));
+        ArgumentNullException.ThrowIfNull(componentLanguages);
+        if (componentLanguages.Count == 0)
+        {
+            return [MarkdownRenderedSegment.Html(global::Markdig.Markdown.ToHtml(markdown, pipeline))];
+        }
+
+        var fencedCodeBlocks = new List<MarkdownFencedCodeBlock>();
+        var markerPrefix = $"<!--cdi-ft-markdown-{Guid.NewGuid():N}-";
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var renderer = new HtmlRenderer(writer);
+        pipeline.Setup(renderer);
+        renderer.ObjectRenderers.Replace<CodeBlockRenderer>(new ExtractingCodeBlockRenderer(
+            componentLanguages,
+            fencedCodeBlocks,
+            markerPrefix));
+        renderer.Render(global::Markdig.Markdown.Parse(markdown, pipeline));
+        writer.Flush();
+
+        return SplitRenderedHtml(writer.ToString(), fencedCodeBlocks, markerPrefix);
+    }
+
+    private static IReadOnlyList<MarkdownRenderedSegment> SplitRenderedHtml(
+        string html,
+        IReadOnlyList<MarkdownFencedCodeBlock> fencedCodeBlocks,
+        string markerPrefix)
+    {
+        if (fencedCodeBlocks.Count == 0)
+        {
+            return [MarkdownRenderedSegment.Html(html)];
+        }
+
+        var segments = new List<MarkdownRenderedSegment>((fencedCodeBlocks.Count * 2) + 1);
+        var cursor = 0;
+        for (var index = 0; index < fencedCodeBlocks.Count; index++)
+        {
+            var marker = CreateMarker(markerPrefix, index);
+            var markerIndex = html.IndexOf(marker, cursor, StringComparison.Ordinal);
+            if (markerIndex < 0)
+            {
+                throw new InvalidOperationException("Markdown fenced-code render marker was not preserved by Markdig.");
+            }
+
+            if (markerIndex > cursor)
+            {
+                segments.Add(MarkdownRenderedSegment.Html(html[cursor..markerIndex]));
+            }
+
+            segments.Add(MarkdownRenderedSegment.FencedCode(fencedCodeBlocks[index]));
+            cursor = markerIndex + marker.Length;
+        }
+
+        if (cursor < html.Length)
+        {
+            segments.Add(MarkdownRenderedSegment.Html(html[cursor..]));
+        }
+
+        return segments;
+    }
+
+    private static string CreateMarker(string markerPrefix, int index) => $"{markerPrefix}{index}-->";
+
+    private sealed class ExtractingCodeBlockRenderer(
+        IReadOnlySet<string> componentLanguages,
+        List<MarkdownFencedCodeBlock> fencedCodeBlocks,
+        string markerPrefix) : CodeBlockRenderer
+    {
+        protected override void Write(HtmlRenderer renderer, CodeBlock codeBlock)
+        {
+            if (codeBlock is not FencedCodeBlock fencedCodeBlock ||
+                !MarkdownFencedCodeLanguage.TryNormalize(fencedCodeBlock.Info?.ToString(), out var language) ||
+                !componentLanguages.Contains(language))
+            {
+                base.Write(renderer, codeBlock);
+                return;
+            }
+
+            var index = fencedCodeBlocks.Count;
+            fencedCodeBlocks.Add(new MarkdownFencedCodeBlock(language, fencedCodeBlock.Lines.ToString()));
+            renderer.Write(CreateMarker(markerPrefix, index));
+        }
     }
 
     private sealed class InertLinkPipelineExtension : IMarkdownExtension

@@ -2,6 +2,8 @@
   <PropertyGroup>
     <AssemblyName>CanDoItAll.FileTools.FileInteraction.Markdown</AssemblyName>
     <RootNamespace>CanDoItAll.FileTools.FileInteraction.Markdown</RootNamespace>
+    <Version>0.1.1</Version>
+    <PackageVersion>0.1.1</PackageVersion>
     <IsPackable>true</IsPackable>
     <Description>Optional Markdown viewer/editor adapter for FileInteraction.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
