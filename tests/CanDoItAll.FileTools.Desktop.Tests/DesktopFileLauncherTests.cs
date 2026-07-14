@@ -154,6 +154,16 @@ public sealed class DesktopFileLauncherTests : IDisposable
         Assert.False(started.UseShellExecute);
     }
 
+    [Fact]
+    public void ShellDelegationWithoutProcessHandle_IsAccepted()
+    {
+        var shellStart = new ProcessStartInfo { UseShellExecute = true };
+        var directStart = new ProcessStartInfo { UseShellExecute = false };
+
+        Assert.True(SystemDesktopProcessStarter.IsAccepted(shellStart, null));
+        Assert.False(SystemDesktopProcessStarter.IsAccepted(directStart, null));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(testRoot))

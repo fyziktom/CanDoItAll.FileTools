@@ -129,6 +129,9 @@ internal sealed class SystemDesktopProcessStarter : IDesktopProcessStarter
     public bool Start(ProcessStartInfo startInfo)
     {
         using Process? process = Process.Start(startInfo);
-        return process is not null;
+        return IsAccepted(startInfo, process);
     }
+
+    internal static bool IsAccepted(ProcessStartInfo startInfo, Process? process)
+        => process is not null || startInfo.UseShellExecute;
 }

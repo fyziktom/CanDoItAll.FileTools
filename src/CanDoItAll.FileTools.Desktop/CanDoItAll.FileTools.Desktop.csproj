@@ -3,8 +3,8 @@
     <AssemblyName>CanDoItAll.FileTools.Desktop</AssemblyName>
     <RootNamespace>CanDoItAll.FileTools.Desktop</RootNamespace>
     <IsPackable>true</IsPackable>
-    <Version>0.1.1</Version>
-    <PackageVersion>0.1.1</PackageVersion>
+    <Version>0.1.2</Version>
+    <PackageVersion>0.1.2</PackageVersion>
     <Description>Desktop file and folder launching for FileTools hosts.</Description>
   </PropertyGroup>
 </Project>
