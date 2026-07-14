@@ -1,6 +1,6 @@
 @implements IAsyncDisposable
 
-<section class="cdi-ft-interaction"
+<section class="cdi-ft-interaction @(FillAvailableHeight ? "cdi-ft-interaction--fill" : null)"
          data-state="@surface.State.ToString().ToLowerInvariant()"
          data-mode="@surface.Mode.ToString().ToLowerInvariant()"
          aria-label="@(string.IsNullOrWhiteSpace(AriaLabel) ? $"File interaction for {surface.Request?.FileName ?? Request?.FileName ?? "file"}" : AriaLabel.Trim())"

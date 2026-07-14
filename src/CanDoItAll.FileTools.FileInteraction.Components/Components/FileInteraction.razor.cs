@@ -88,6 +88,9 @@ public partial class FileInteraction : ComponentBase, IAsyncDisposable
     [Parameter]
     public string? AriaLabel { get; set; }
 
+    [Parameter]
+    public bool FillAvailableHeight { get; set; }
+
     public FileInteractionState CurrentState =>
         FileInteractionStateFactory.Create(surface, editing, saveUi, editUi);
 

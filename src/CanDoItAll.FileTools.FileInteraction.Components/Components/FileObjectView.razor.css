@@ -32,6 +32,19 @@
     border: 0;
 }
 
+.cdi-ft-object-surface--browser {
+    overflow: hidden;
+    background: var(--cdi-ft-paper, #fbfaf7);
+}
+
+.cdi-ft-object-surface iframe {
+    inline-size: 100%;
+    min-block-size: 18rem;
+    block-size: 100%;
+    border: 0;
+    background: #fff;
+}
+
 .cdi-ft-object-state {
     display: grid;
     min-block-size: 10rem;

@@ -5,13 +5,18 @@ namespace CanDoItAll.FileTools.FileInteraction.Components;
 
 public enum FileObjectViewKind
 {
-    /// <summary>Displays bounded raster image bytes. Built-ins route SVG to the inert fallback.</summary>
+    /// <summary>Displays bounded raster image bytes.</summary>
     Image,
     /// <summary>
     /// Uses the browser's native PDF object viewer. Links and document actions inside that viewer remain
     /// browser-owned and are not intercepted or authorized by FileInteraction.
     /// </summary>
-    Pdf
+    Pdf,
+    /// <summary>
+    /// Gives the browser a bounded blob URL inside a fully sandboxed frame. Rendering support remains
+    /// browser- and codec-dependent, while file content stays isolated from the host document.
+    /// </summary>
+    Browser
 }
 
 internal readonly record struct FileObjectContentStamp(

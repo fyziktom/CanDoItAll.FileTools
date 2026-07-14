@@ -178,7 +178,7 @@ public sealed class FileInteractionRenderTests
     }
 
     [Fact]
-    public async Task Render_UnknownFallbackNeverEmbedsPotentiallyActiveContent()
+    public async Task Render_UnknownFallbackUsesFullySandboxedBrowserFrame()
     {
         await using var renderer = new InteractionHtmlRenderer();
 
@@ -189,24 +189,20 @@ public sealed class FileInteractionRenderTests
                 mediaType: "application/x-unknown"),
             Source("<script>danger()</script>", "application/x-unknown")));
 
-        Assert.Contains("data-testid=\"interaction-object-view\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-testid=\"interaction-browser-view\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<object", html, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("<iframe", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<iframe", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("sandbox=\"\"", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("referrerpolicy=\"no-referrer\"", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("<script", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("danger()", html, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task Render_InertUnknownFallbackReadsMetadataButNeverPayload()
+    public async Task Render_UnknownFallbackReadsBoundedPayloadForBrowserFrame()
     {
         await using var renderer = new InteractionHtmlRenderer();
-        var stream = new ReadRejectingStream();
-        var source = new DelegateContentSource((_, _) => ValueTask.FromResult(
-            new FileContentLease(
-                stream,
-                "application/x-unknown",
-                length: 50_000_000,
-                revision: new FileContentRevision("r1"))));
+        var source = Source("browser payload", "application/x-unknown");
 
         var html = await renderer.RenderAsync(Parameters(
             new FileInteractionRequest(
@@ -215,27 +211,19 @@ public sealed class FileInteractionRenderTests
                 mediaType: "application/octet-stream"),
             source));
 
-        Assert.Contains("data-testid=\"interaction-object-view\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-testid=\"interaction-browser-view\"", html, StringComparison.Ordinal);
         Assert.Equal(1, source.OpenCount);
-        Assert.Equal(0, stream.ReadCount);
-        Assert.True(stream.WasDisposed);
     }
 
     [Theory]
     [InlineData("hostile.svg", null)]
     [InlineData("hostile.bin", "image/svg+xml")]
-    public async Task Render_SvgUsesInertMetadataOnlySurfaceAndNeverEmbedsOrReadsPayload(
+    public async Task Render_SvgUsesSandboxedBrowserFrame(
         string fileName,
         string? requestMediaType)
     {
         await using var renderer = new InteractionHtmlRenderer();
-        var stream = new ReadRejectingStream();
-        var source = new DelegateContentSource((_, _) => ValueTask.FromResult(
-            new FileContentLease(
-                stream,
-                "image/svg+xml",
-                length: 10_000,
-                revision: new FileContentRevision("r1"))));
+        var source = Source("<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>", "image/svg+xml");
 
         var html = await renderer.RenderAsync(Parameters(
             new FileInteractionRequest(
@@ -244,24 +232,23 @@ public sealed class FileInteractionRenderTests
                 mediaType: requestMediaType),
             source));
 
-        Assert.Contains("data-testid=\"interaction-object-view\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-testid=\"interaction-browser-view\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<img", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("<object", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(0, stream.ReadCount);
-        Assert.True(stream.WasDisposed);
+        Assert.Contains("<iframe", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("sandbox=\"\"", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(1, source.OpenCount);
     }
 
     [Theory]
     [InlineData("photo.heic", "image/heic")]
     [InlineData("scan.tiff", "image/tiff")]
-    public async Task Render_UnsupportedImageMediaTypeUsesInertFallback(
+    public async Task Render_AdditionalImageMediaTypeUsesBrowserFallback(
         string fileName,
         string mediaType)
     {
         await using var renderer = new InteractionHtmlRenderer();
-        var stream = new ReadRejectingStream();
-        var source = new DelegateContentSource((_, _) => ValueTask.FromResult(
-            new FileContentLease(stream, mediaType, length: 50_000)));
+        var source = Source("bounded image payload", mediaType);
 
         var html = await renderer.RenderAsync(Parameters(
             new FileInteractionRequest(
@@ -270,9 +257,31 @@ public sealed class FileInteractionRenderTests
                 mediaType: mediaType),
             source));
 
-        Assert.Contains("data-testid=\"interaction-object-view\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-testid=\"interaction-browser-view\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("data-testid=\"interaction-image-view\"", html, StringComparison.Ordinal);
-        Assert.Equal(0, stream.ReadCount);
+        Assert.Equal(1, source.OpenCount);
+    }
+
+    [Theory]
+    [InlineData("movie.avi", "video/x-msvideo")]
+    [InlineData("movie.mp4", "video/mp4")]
+    [InlineData("sound.mp3", "audio/mpeg")]
+    public async Task Render_BrowserMediaTypesUseSandboxedFrame(
+        string fileName,
+        string mediaType)
+    {
+        await using var renderer = new InteractionHtmlRenderer();
+
+        var html = await renderer.RenderAsync(Parameters(
+            new FileInteractionRequest(
+                new FileReference("test", fileName),
+                fileName,
+                mediaType: mediaType),
+            Source("bounded media payload", mediaType)));
+
+        Assert.Contains("data-testid=\"interaction-browser-view\"", html, StringComparison.Ordinal);
+        Assert.Contains("<iframe", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("sandbox=\"\"", html, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]
@@ -355,39 +364,4 @@ public sealed class FileInteractionRenderTests
             => ValueTask.FromException<TValue>(new InvalidOperationException("JS is unavailable during static rendering."));
     }
 
-    private sealed class ReadRejectingStream : Stream
-    {
-        public int ReadCount { get; private set; }
-        public bool WasDisposed { get; private set; }
-        public override bool CanRead => true;
-        public override bool CanSeek => false;
-        public override bool CanWrite => false;
-        public override long Length => 50_000_000;
-        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
-        public override void Flush() => throw new NotSupportedException();
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            ReadCount++;
-            throw new InvalidOperationException("Metadata-only rendering must not read payload bytes.");
-        }
-
-        public override ValueTask<int> ReadAsync(
-            Memory<byte> buffer,
-            CancellationToken cancellationToken = default)
-        {
-            ReadCount++;
-            return ValueTask.FromException<int>(
-                new InvalidOperationException("Metadata-only rendering must not read payload bytes."));
-        }
-
-        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-        public override void SetLength(long value) => throw new NotSupportedException();
-        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-
-        public override ValueTask DisposeAsync()
-        {
-            WasDisposed = true;
-            return base.DisposeAsync();
-        }
-    }
 }

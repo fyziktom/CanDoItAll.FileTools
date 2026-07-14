@@ -219,6 +219,34 @@ public sealed class FileObjectUrlInteropTests : BunitContext
     }
 
     [Fact]
+    public void BrowserTarget_IsFullySandboxedAndBindsTheBlobToSrc()
+    {
+        var module = JSInterop.SetupModule(FileObjectUrlInterop.ModulePath);
+        var apply = module.SetupVoid(FileObjectUrlInterop.ApplyMethod, _ => true).SetVoidResult();
+        var request = new FileInteractionRequest(
+            new FileReference("test", "movie.avi"),
+            "movie.avi",
+            mediaType: "video/x-msvideo");
+        var context = new FileInteractionRenderContext(
+            request,
+            FileInteractionMode.View,
+            new byte[] { 1, 2, 3 },
+            0,
+            "video/x-msvideo");
+
+        var cut = Render<FileObjectView>(parameters => parameters
+            .Add(component => component.Context, context)
+            .Add(component => component.Kind, FileObjectViewKind.Browser));
+
+        var frame = cut.Find("iframe");
+        Assert.Equal(string.Empty, frame.GetAttribute("sandbox"));
+        Assert.Equal("no-referrer", frame.GetAttribute("referrerpolicy"));
+        Assert.Equal("movie.avi", frame.GetAttribute("title"));
+        var invocation = Assert.Single(apply.Invocations);
+        Assert.Equal("src", Assert.IsType<string>(invocation.Arguments[3]));
+    }
+
+    [Fact]
     public async Task ImageDecodeFailure_HidesTargetAndShowsInertFallback()
     {
         var module = JSInterop.SetupModule(FileObjectUrlInterop.ModulePath);

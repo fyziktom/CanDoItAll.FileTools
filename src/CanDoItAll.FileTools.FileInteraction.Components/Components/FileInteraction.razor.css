@@ -20,6 +20,11 @@
     container: cdi-ft-interaction / inline-size;
 }
 
+.cdi-ft-interaction--fill {
+    height: 100%;
+    min-height: 0;
+}
+
 .cdi-ft-interaction__header {
     z-index: 1;
     display: flex;
