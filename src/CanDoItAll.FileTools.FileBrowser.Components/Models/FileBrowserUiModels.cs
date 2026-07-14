@@ -37,15 +37,47 @@ public sealed record FileBrowserItemInvokedEventArgs(
     FileBrowserItem Item,
     FileBrowserInvocationKind Kind);
 
-/// <summary>
-/// Host notification for a capability-driven item action. The component never executes the
-/// action result itself; the host decides whether and how to open, copy, download, or run it.
-/// </summary>
-public sealed record FileBrowserItemActionEventArgs(
-    FileBrowserItem Item,
-    FileBrowserActionDescriptor Action)
+public enum FileBrowserActionOrigin
 {
+    Session,
+    Host
+}
+
+public sealed record FileBrowserItemActionEventArgs
+{
+    public FileBrowserItemActionEventArgs(
+        FileBrowserItem item,
+        FileBrowserActionDescriptor action)
+        : this(item, action, FileBrowserActionOrigin.Session, false)
+    {
+    }
+
+    private FileBrowserItemActionEventArgs(
+        FileBrowserItem item,
+        FileBrowserActionDescriptor action,
+        FileBrowserActionOrigin origin,
+        bool isPresentedHostAction)
+    {
+        Item = item ?? throw new ArgumentNullException(nameof(item));
+        Action = action ?? throw new ArgumentNullException(nameof(action));
+        Origin = origin;
+        IsPresentedHostAction = isPresentedHostAction;
+    }
+
+    public FileBrowserItem Item { get; init; }
+
+    public FileBrowserActionDescriptor Action { get; }
+
+    public FileBrowserActionOrigin Origin { get; }
+
     public string ActionId => Action.Id;
+
+    internal bool IsPresentedHostAction { get; }
+
+    internal static FileBrowserItemActionEventArgs CreatePresentedHostAction(
+        FileBrowserItem item,
+        FileBrowserActionDescriptor action)
+        => new(item, action, FileBrowserActionOrigin.Host, true);
 
     public FileBrowserActionRequest CreateRequest()
         => new(Item.Key, Action.Id);

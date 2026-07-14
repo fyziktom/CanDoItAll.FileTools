@@ -9,6 +9,7 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
     private readonly FileBrowserSearchDebouncer searchDebouncer = new();
     private readonly CancellationTokenSource lifetime = new();
     private IFileBrowserSession? boundSession;
+    private IFileBrowserHostActionCatalog? previousHostActionCatalog;
     private CancellationTokenSource? bindingLifetime;
     private FileBrowserSnapshot snapshot = default!;
     private FileBrowserViewMode viewMode;
@@ -60,6 +61,9 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
     [Parameter]
     public EventCallback<FileBrowserItemActionEventArgs> ActionRequested { get; set; }
 
+    [Parameter]
+    public IFileBrowserHostActionCatalog? HostActionCatalog { get; set; }
+
     public FileBrowserSnapshot Snapshot => snapshot;
 
     private string RootClass
@@ -76,6 +80,8 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
             viewModeInitialized = true;
         }
 
+        bool hostActionCatalogChanged = !ReferenceEquals(previousHostActionCatalog, HostActionCatalog);
+        previousHostActionCatalog = HostActionCatalog;
         if (!ReferenceEquals(boundSession, Session))
         {
             interactionDispatcher.ChangeSession();
@@ -93,6 +99,10 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
             snapshot = boundSession.Snapshot;
             SynchronizeSearchFromSnapshot(force: true);
             initializationPending = ShouldInitialize(snapshot);
+        }
+        else if (hostActionCatalogChanged)
+        {
+            interactionDispatcher.AcceptSnapshot();
         }
     }
 

@@ -11,6 +11,15 @@
             <strong title="@surface.Request?.FileName">@(surface.Request?.FileName ?? Request?.FileName ?? "File")</strong>
         </div>
 
+        @if (OpenExternallyRequested.HasDelegate)
+        {
+            FileInteractionRequest externalOpenRequest = Request!;
+            <button type="button"
+                    class="cdi-ft-interaction__open-externally"
+                    data-testid="interaction-open-externally"
+                    @onclick="() => RequestExternalOpenAsync(externalOpenRequest)">@OpenExternallyLabel.Trim()</button>
+        }
+
         <div class="cdi-ft-interaction__modes" role="group" aria-label="Interaction mode">
             <button type="button"
                     aria-pressed="@(surface.Mode == FileInteractionMode.View ? "true" : "false")"

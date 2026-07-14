@@ -76,6 +76,7 @@
                                                 Item="item"
                                                 Source="Snapshot.CurrentSource"
                                                 SnapshotRevision="Snapshot.Revision"
+                                                HostActionCatalog="HostActionCatalog"
                                                 Disabled="Snapshot.IsBusy"
                                                 ActionRequested="ActionRequested" />
                     </td>
@@ -91,6 +92,9 @@
 
     [Parameter, EditorRequired]
     public FileBrowserSnapshot Snapshot { get; set; } = default!;
+
+    [Parameter]
+    public IFileBrowserHostActionCatalog? HostActionCatalog { get; set; }
 
     [Parameter]
     public EventCallback<FileBrowserItem> SelectRequested { get; set; }

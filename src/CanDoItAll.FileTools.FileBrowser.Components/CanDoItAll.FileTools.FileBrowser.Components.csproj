@@ -4,6 +4,8 @@
     <RootNamespace>CanDoItAll.FileTools.FileBrowser.Components</RootNamespace>
     <IsPackable>true</IsPackable>
     <Description>Responsive Blazor FileBrowser components.</Description>
+    <Version>0.2.0</Version>
+    <PackageVersion>0.2.0</PackageVersion>
   </PropertyGroup>
   <ItemGroup>
     <SupportedPlatform Include="browser" />

@@ -30,16 +30,16 @@
         }
         else
         {
-            @foreach (FileBrowserActionDescriptor action in actions)
+            @foreach (FileBrowserPresentedAction presentedAction in actions)
             {
-                <button @key="action.Id"
+                <button @key="presentedAction"
                         type="button"
                         disabled="@Disabled"
-                        class="ft-file-browser__action-item ft-file-browser__action-item--@action.Tone.ToString().ToLowerInvariant()"
-                        title="@action.Description"
+                        class="ft-file-browser__action-item ft-file-browser__action-item--@presentedAction.Action.Tone.ToString().ToLowerInvariant()"
+                        title="@presentedAction.Action.Description"
                         popovertarget="@menuId"
                         popovertargetaction="hide"
-                        @onclick="() => RequestActionAsync(action)">@action.Label</button>
+                        @onclick="() => RequestActionAsync(presentedAction)">@presentedAction.Action.Label</button>
             }
         }
     </div>

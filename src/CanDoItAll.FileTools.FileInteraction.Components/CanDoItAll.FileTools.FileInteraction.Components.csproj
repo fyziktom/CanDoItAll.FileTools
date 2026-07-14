@@ -4,6 +4,8 @@
     <RootNamespace>CanDoItAll.FileTools.FileInteraction.Components</RootNamespace>
     <IsPackable>true</IsPackable>
     <Description>Blazor FileInteraction shell and lightweight viewers/editors.</Description>
+    <Version>0.2.0</Version>
+    <PackageVersion>0.2.0</PackageVersion>
   </PropertyGroup>
   <ItemGroup>
     <SupportedPlatform Include="browser" />

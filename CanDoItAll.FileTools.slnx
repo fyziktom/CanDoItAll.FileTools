@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/CanDoItAll.FileTools.Abstractions/CanDoItAll.FileTools.Abstractions.csproj" />
+    <Project Path="src/CanDoItAll.FileTools.Desktop/CanDoItAll.FileTools.Desktop.csproj" />
     <Project Path="src/CanDoItAll.FileTools.FileBrowser.Core/CanDoItAll.FileTools.FileBrowser.Core.csproj" />
     <Project Path="src/CanDoItAll.FileTools.FileBrowser.Components/CanDoItAll.FileTools.FileBrowser.Components.csproj" />
     <Project Path="src/CanDoItAll.FileTools.Providers.FileSystem/CanDoItAll.FileTools.Providers.FileSystem.csproj" />
@@ -13,6 +14,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CanDoItAll.FileTools.Abstractions.Tests/CanDoItAll.FileTools.Abstractions.Tests.csproj" />
+    <Project Path="tests/CanDoItAll.FileTools.Desktop.Tests/CanDoItAll.FileTools.Desktop.Tests.csproj" />
     <Project Path="tests/CanDoItAll.FileTools.FileBrowser.Core.Tests/CanDoItAll.FileTools.FileBrowser.Core.Tests.csproj" />
     <Project Path="tests/CanDoItAll.FileTools.FileBrowser.Components.Tests/CanDoItAll.FileTools.FileBrowser.Components.Tests.csproj" />
     <Project Path="tests/CanDoItAll.FileTools.Providers.FileSystem.Tests/CanDoItAll.FileTools.Providers.FileSystem.Tests.csproj" />

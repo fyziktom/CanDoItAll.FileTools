@@ -69,6 +69,12 @@ public partial class FileInteraction : ComponentBase, IAsyncDisposable
     [Parameter]
     public EventCallback<FileInteractionSaveRequestedEventArgs> SaveRequested { get; set; }
 
+    [Parameter]
+    public EventCallback<FileInteractionRequest> OpenExternallyRequested { get; set; }
+
+    [Parameter]
+    public string OpenExternallyLabel { get; set; } = "Open in preferred app";
+
     /// <summary>Raised and awaited before mode-state publication so a controlled host can update Request.Mode.</summary>
     [Parameter]
     public EventCallback<FileInteractionMode> ModeChanged { get; set; }
@@ -149,6 +155,12 @@ public partial class FileInteraction : ComponentBase, IAsyncDisposable
             throw new InvalidOperationException($"{nameof(MaximumContentBytes)} must be positive.");
         }
 
+        if (OpenExternallyRequested.HasDelegate
+            && string.IsNullOrWhiteSpace(OpenExternallyLabel))
+        {
+            throw new InvalidOperationException($"{nameof(OpenExternallyLabel)} cannot be empty.");
+        }
+
         statePublisher.SetCallback(StateChanged);
         var composition = Composition ?? FileInteractionComponentComposition.BuiltIn;
         if (surface.HasInputChanged(Request, ContentSource, composition, MaximumContentBytes))
@@ -179,6 +191,11 @@ public partial class FileInteraction : ComponentBase, IAsyncDisposable
             await ReloadAsync(Request, ContentSource, Composition ?? FileInteractionComponentComposition.BuiltIn);
         }
     }
+
+    private Task RequestExternalOpenAsync(FileInteractionRequest request)
+        => !disposed && ReferenceEquals(request, Request)
+            ? OpenExternallyRequested.InvokeAsync(request)
+            : Task.CompletedTask;
 
     private async Task ReloadAsync(
         FileInteractionRequest request,

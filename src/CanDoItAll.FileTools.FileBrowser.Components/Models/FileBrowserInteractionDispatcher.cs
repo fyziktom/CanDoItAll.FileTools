@@ -114,11 +114,21 @@ internal sealed class FileBrowserInteractionDispatcher
         FileBrowserInteractionStamp stamp,
         EventCallback<FileBrowserItemActionEventArgs> hostCallback)
     {
-        if (!TryResolveCurrentItem(args.Item, snapshot, stamp, out FileBrowserItem current)
-            || !FileBrowserInteractionPolicy.IsActionSupported(
+        if (!TryResolveCurrentItem(args.Item, snapshot, stamp, out FileBrowserItem current))
+        {
+            return;
+        }
+
+        bool isSupported = args.Origin switch
+        {
+            FileBrowserActionOrigin.Session => FileBrowserInteractionPolicy.IsActionSupported(
                 current,
                 snapshot.CurrentSource,
-                args.ActionId))
+                args.ActionId),
+            FileBrowserActionOrigin.Host => args.IsPresentedHostAction,
+            _ => false
+        };
+        if (!isSupported)
         {
             return;
         }
