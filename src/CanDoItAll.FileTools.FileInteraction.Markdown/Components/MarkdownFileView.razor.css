@@ -1,4 +1,8 @@
 .cdi-ft-markdown {
+    box-sizing: border-box;
+    block-size: 100%;
+    min-block-size: 0;
+    overflow: auto;
     color: inherit;
     font: inherit;
     line-height: 1.55;

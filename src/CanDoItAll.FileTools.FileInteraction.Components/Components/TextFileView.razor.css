@@ -1,6 +1,7 @@
 .cdi-ft-text-view {
     box-sizing: border-box;
-    min-block-size: 100%;
+    block-size: 100%;
+    min-block-size: 0;
     margin: 0;
     padding: 1rem;
     overflow: auto;
