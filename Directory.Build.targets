@@ -3,10 +3,20 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <_UseRepositoryPackageReadme>true</_UseRepositoryPackageReadme>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(IsPackable)' == 'true' and '$(PackageLicenseExpression)' == '' and '$(PackageLicenseFile)' == ''">
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <_UseRepositoryPackageLicense>true</_UseRepositoryPackageLicense>
+  </PropertyGroup>
   <ItemGroup Condition="'$(_UseRepositoryPackageReadme)' == 'true'">
     <None Include="$(MSBuildThisFileDirectory)README.md"
           Pack="true"
           PackagePath="\"
           Link="README.md" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(_UseRepositoryPackageLicense)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)LICENSE"
+          Pack="true"
+          PackagePath="\"
+          Link="LICENSE" />
   </ItemGroup>
 </Project>

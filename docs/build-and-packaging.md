@@ -2,8 +2,8 @@
 
 The repository is pinned by `global.json` to .NET SDK 10.0.301 with latest-patch
 roll-forward. Package metadata is centralized in `Directory.Build.props`;
-`Directory.Build.targets` supplies the repository README to packable projects that do
-not define a package-specific readme. NuGet versions are centralized in
+`Directory.Build.targets` supplies the repository README and license to packable projects
+that do not define package-specific files. NuGet versions are centralized in
 `Directory.Packages.props`, and restore commands select the repository-owned
 `NuGet.config` explicitly so machine-level sources do not affect the result.
 
@@ -66,7 +66,8 @@ packages accidentally.
 Validation requires:
 
 - exactly one `.nupkg` and one `.snupkg` for each expected ID;
-- matching package ID, assembly, XML documentation, package readme, MIT expression, and CanDoItAll author metadata;
+- matching package ID, assembly, XML documentation, package readme, embedded
+  MIT-derived license with the canonical source link, and CanDoItAll author metadata;
 - distinct public project and source-repository URLs plus published Git provenance;
 - the package-specific versions selected by each project, including exact internal dependency versions;
 - the approved project-reference and packed dependency graph;

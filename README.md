@@ -1,5 +1,11 @@
 # CanDoItAll.FileTools
 
+[![CI](https://github.com/fyziktom/CanDoItAll.FileTools/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/fyziktom/CanDoItAll.FileTools/actions/workflows/ci.yml)
+[![NuGet version](https://img.shields.io/nuget/v/CanDoItAll.FileTools.Abstractions.svg?logo=nuget&label=NuGet)](https://www.nuget.org/packages/CanDoItAll.FileTools.Abstractions)
+[![NuGet downloads](https://img.shields.io/nuget/dt/CanDoItAll.FileTools.Abstractions.svg?logo=nuget&label=Abstractions%20downloads)](https://www.nuget.org/packages/CanDoItAll.FileTools.Abstractions)
+[![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/download/dotnet/10.0)
+[![License](https://img.shields.io/badge/license-MIT--derived%20with%20source%20link-blue.svg)](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/LICENSE)
+
 Storage-neutral .NET and Blazor building blocks for browsing, viewing, and editing file-like resources. The repository targets .NET 10 and keeps application storage drivers, authorization, application-triggered navigation, downloads, clipboard access, and persistence in the host. Browser-native viewer behavior, notably embedded PDF actions, remains browser-owned and is documented as an explicit boundary.
 
 ## Ownership
@@ -157,6 +163,7 @@ The Sandbox under `samples/CanDoItAll.FileTools.Sandbox` demonstrates composed U
 ## License and contributions
 
 The repository is licensed under
-[MIT](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/LICENSE).
+[the MIT-derived license with source-link requirement](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/LICENSE).
+Redistributions in source or binary form must include a link to this repository.
 See the [contribution policy](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/CONTRIBUTING.md)
 and [security policy](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/SECURITY.md).

@@ -149,7 +149,6 @@ $requiredBuildProperties = [ordered]@{
     RepositoryUrl = 'https://github.com/fyziktom/CanDoItAll.FileTools'
     RepositoryType = 'git'
     PublishRepositoryUrl = 'true'
-    PackageLicenseExpression = 'MIT'
     IncludeSymbols = 'true'
     SymbolPackageFormat = 'snupkg'
 }
@@ -158,6 +157,18 @@ foreach ($property in $requiredBuildProperties.GetEnumerator()) {
     if ($actualValue -ne $property.Value) {
         throw "Directory.Build.props must set $($property.Key) to '$($property.Value)'; found '$actualValue'."
     }
+}
+
+$licenseExpression = Get-XmlNodeText $buildProps "/*[local-name()='Project']/*[local-name()='PropertyGroup']/*[local-name()='PackageLicenseExpression']"
+if (-not [string]::IsNullOrWhiteSpace($licenseExpression)) {
+    throw "Directory.Build.props must not use PackageLicenseExpression for the modified MIT-derived license."
+}
+
+$repositoryLicensePath = Join-Path $repositoryRoot 'LICENSE'
+$repositoryLicenseText = [System.IO.File]::ReadAllText($repositoryLicensePath)
+if ($repositoryLicenseText -notmatch 'MIT-Derived License with Source Link Requirement' -or
+    $repositoryLicenseText -notmatch [regex]::Escape('https://github.com/fyziktom/CanDoItAll.FileTools')) {
+    throw "The repository LICENSE does not contain the required source-link contract."
 }
 
 $packagePath = Resolve-ArtifactPath $PackageDirectory 'PackageDirectory'
@@ -249,7 +260,7 @@ foreach ($package in $packages) {
         $id = Get-XmlNodeText $metadata "*[local-name()='id']"
         $version = Get-XmlNodeText $metadata "*[local-name()='version']"
         $authors = Get-XmlNodeText $metadata "*[local-name()='authors']"
-        $license = Get-XmlNodeText $metadata "*[local-name()='license']"
+        $license = $metadata.SelectSingleNode("*[local-name()='license']")
         $readme = Get-XmlNodeText $metadata "*[local-name()='readme']"
         $projectUrl = Get-XmlNodeText $metadata "*[local-name()='projectUrl']"
         $repository = $metadata.SelectSingleNode("*[local-name()='repository']")
@@ -265,8 +276,14 @@ foreach ($package in $packages) {
             throw "Package '$id' changed version while the package set was being inspected."
         }
 
-        if ($authors -ne 'CanDoItAll' -or $license -ne 'MIT') {
-            throw "Package '$id' must carry CanDoItAll authorship and the MIT license expression."
+        if ($authors -ne 'CanDoItAll') {
+            throw "Package '$id' must carry CanDoItAll authorship."
+        }
+
+        if ($null -eq $license -or
+            $license.GetAttribute('type') -ne 'file' -or
+            $license.InnerText.Trim() -ne 'LICENSE') {
+            throw "Package '$id' must declare the repository LICENSE as a file license."
         }
 
         if ($readme -ne 'README.md') {
@@ -302,6 +319,22 @@ foreach ($package in $packages) {
 
         if ($entryNames -cnotcontains 'README.md') {
             throw "Package '$id' must contain README.md at the package root."
+        }
+
+        if ($entryNames -cnotcontains 'LICENSE') {
+            throw "Package '$id' must contain LICENSE at the package root."
+        }
+
+        $licenseEntry = $archive.GetEntry('LICENSE')
+        $licenseReader = [System.IO.StreamReader]::new($licenseEntry.Open())
+        try {
+            $licenseText = $licenseReader.ReadToEnd()
+            if ($licenseText -cne $repositoryLicenseText) {
+                throw "Package '$id' contains a LICENSE that differs from the repository LICENSE."
+            }
+        }
+        finally {
+            $licenseReader.Dispose()
         }
 
         $readmeEntry = $archive.GetEntry('README.md')
