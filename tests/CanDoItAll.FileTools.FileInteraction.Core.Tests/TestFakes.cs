@@ -45,19 +45,31 @@ internal sealed class ManualFileInteractionDelay : IFileInteractionDelay
 
 internal static class TestWait
 {
-    public static async Task UntilAsync(Func<bool> condition)
-    {
-        for (var attempt = 0; attempt < 1_000; attempt++)
-        {
-            if (condition())
-            {
-                return;
-            }
+    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(1);
 
-            await Task.Yield();
+    public static async Task UntilAsync(
+        Func<bool> condition,
+        TimeSpan? timeout = null)
+    {
+        ArgumentNullException.ThrowIfNull(condition);
+        var effectiveTimeout = timeout ?? DefaultTimeout;
+        if (effectiveTimeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(timeout));
         }
 
-        Assert.Fail("The expected asynchronous condition did not become true.");
+        var startedAt = TimeProvider.System.GetTimestamp();
+        while (!condition())
+        {
+            if (TimeProvider.System.GetElapsedTime(startedAt) >= effectiveTimeout)
+            {
+                Assert.Fail(
+                    $"The expected asynchronous condition did not become true within {effectiveTimeout}.");
+            }
+
+            await Task.Delay(PollInterval);
+        }
     }
 
     public static async Task YieldSeveralAsync()
