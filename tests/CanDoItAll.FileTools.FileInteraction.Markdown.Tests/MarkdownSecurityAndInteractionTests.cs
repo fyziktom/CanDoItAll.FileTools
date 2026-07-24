@@ -141,7 +141,9 @@ public sealed class MarkdownSecurityAndInteractionTests : BunitContext
         Assert.Empty(cut.FindAll("a"));
         var mermaid = cut.FindComponent<TestMermaidComponent>();
         Assert.Equal("mermaid", mermaid.Instance.Context.Language);
-        Assert.Equal("flowchart LR\n    UI --> Application", mermaid.Instance.Context.Source);
+        Assert.Equal(
+            "flowchart LR\n    UI --> Application",
+            mermaid.Instance.Context.Source.ReplaceLineEndings("\n"));
     }
 
     private IRenderedComponent<MarkdownFileView> RenderMarkdown(string markdown)
