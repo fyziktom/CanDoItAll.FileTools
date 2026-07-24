@@ -3,7 +3,7 @@ using FileBrowserComponent = CanDoItAll.FileTools.FileBrowser.Components.FileBro
 
 namespace CanDoItAll.FileTools.FileBrowser.Components.Tests;
 
-public sealed class FileBrowserRenderedComponentTests : BunitContext
+public sealed class FileBrowserRenderedComponentTests : FileToolsBunitContext
 {
     [Theory]
     [InlineData(FileBrowserViewMode.List, ".ft-file-browser__item-main")]
@@ -128,7 +128,7 @@ public sealed class FileBrowserRenderedComponentTests : BunitContext
             .Add(component => component.SnapshotRevision, 7L));
 
         Task pendingLoad = cut.Find(".ft-file-browser__action-menu-button").ClickAsync();
-        await loadStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await loadStarted.Task.WaitAsync(AsyncOperationTimeout);
         cut.Render(parameters => parameters
             .Add(component => component.Item, changed)
             .Add(component => component.SnapshotRevision, 8L));

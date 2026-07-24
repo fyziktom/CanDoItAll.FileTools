@@ -3,7 +3,7 @@ using FileBrowserComponent = CanDoItAll.FileTools.FileBrowser.Components.FileBro
 
 namespace CanDoItAll.FileTools.FileBrowser.Components.Tests;
 
-public sealed class FileBrowserHostActionCatalogTests : BunitContext
+public sealed class FileBrowserHostActionCatalogTests : FileToolsBunitContext
 {
     [Theory]
     [InlineData(FileBrowserViewMode.List)]

@@ -3,7 +3,7 @@ using FileBrowserComponent = CanDoItAll.FileTools.FileBrowser.Components.FileBro
 
 namespace CanDoItAll.FileTools.FileBrowser.Components.Tests;
 
-public sealed class FileBrowserHostBoundaryBehaviorTests : BunitContext
+public sealed class FileBrowserHostBoundaryBehaviorTests : FileToolsBunitContext
 {
     [Fact]
     public async Task FileDoubleClick_AwaitsHostItemInvokedCallback()
@@ -25,7 +25,7 @@ public sealed class FileBrowserHostBoundaryBehaviorTests : BunitContext
             }));
 
         Task activation = cut.Find(".ft-file-browser__item-main").DoubleClickAsync();
-        await callbackStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await callbackStarted.Task.WaitAsync(AsyncOperationTimeout);
 
         Assert.False(activation.IsCompleted);
         releaseCallback.SetResult();
@@ -79,7 +79,7 @@ public sealed class FileBrowserHostBoundaryBehaviorTests : BunitContext
         IElement actionButton = cut.WaitForElement(".ft-file-browser__action-item");
 
         Task forwarding = actionButton.ClickAsync();
-        await callbackStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await callbackStarted.Task.WaitAsync(AsyncOperationTimeout);
 
         Assert.False(forwarding.IsCompleted);
         Assert.Equal(0, session.ExecuteActionCalls);

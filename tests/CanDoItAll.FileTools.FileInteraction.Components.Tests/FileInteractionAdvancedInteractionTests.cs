@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Components.Rendering;
 
 namespace CanDoItAll.FileTools.FileInteraction.Components.Tests;
 
-public sealed class FileInteractionAdvancedInteractionTests : BunitContext
+public sealed class FileInteractionAdvancedInteractionTests : FileToolsBunitContext
 {
     [Fact]
     public async Task TextUnitAutoSave_UsesCumulativeChangedUtf16UnitsAndPublishesAcknowledgedState()
@@ -28,7 +28,7 @@ public sealed class FileInteractionAdvancedInteractionTests : BunitContext
         await cut.Find("textarea").InputAsync("ab");
         Assert.False(saved.Task.IsCompleted);
         await cut.Find("textarea").InputAsync("abcd");
-        var request = await saved.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var request = await saved.Task.WaitAsync(AsyncOperationTimeout);
 
         Assert.True(request.IsAutomatic);
         await using var stream = await request.Content.OpenReadAsync();
@@ -131,7 +131,7 @@ public sealed class FileInteractionAdvancedInteractionTests : BunitContext
             .Add(component => component.StateChanged, states.Add));
 
         await cut.Find("textarea").InputAsync("abc");
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await entered.Task.WaitAsync(AsyncOperationTimeout);
         await cut.Find("textarea").InputAsync("abcd");
         release.TrySetResult();
 
@@ -183,10 +183,10 @@ public sealed class FileInteractionAdvancedInteractionTests : BunitContext
 
         await cut.Find("textarea").InputAsync("ab");
         var manualSave = cut.Find("[data-testid='interaction-save']").ClickAsync();
-        await firstEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await firstEntered.Task.WaitAsync(AsyncOperationTimeout);
         await cut.Find("textarea").InputAsync("abc");
         releaseFirst.TrySetResult();
-        await secondEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await secondEntered.Task.WaitAsync(AsyncOperationTimeout);
 
         cut.WaitForAssertion(() =>
         {
@@ -237,7 +237,7 @@ public sealed class FileInteractionAdvancedInteractionTests : BunitContext
             .Add(component => component.StateChanged, replacementStates.Add));
 
         await cut.Find("textarea").InputAsync("first changed");
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await entered.Task.WaitAsync(AsyncOperationTimeout);
         var replacement = cut.InvokeAsync(() => cut.Render(parameters => parameters
             .Add(component => component.Request, secondRequest)
             .Add(component => component.ContentSource, Source("second"))
@@ -291,7 +291,7 @@ public sealed class FileInteractionAdvancedInteractionTests : BunitContext
                 saveCount++;
                 saved.TrySetResult();
             }));
-        await saved.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await saved.Task.WaitAsync(AsyncOperationTimeout);
         cut.WaitForAssertion(() => Assert.False(cut.Instance.CurrentState.IsDirty));
         Assert.Equal("Saved", SaveStatus(cut));
 
@@ -359,7 +359,7 @@ public sealed class FileInteractionAdvancedInteractionTests : BunitContext
         cut.WaitForAssertion(() => Assert.Contains(
             "9|application/x-edited|binary-v1",
             cut.Find("[data-testid='interaction-preview']").TextContent,
-            StringComparison.Ordinal), TimeSpan.FromSeconds(5));
+            StringComparison.Ordinal), AsyncOperationTimeout);
 
         await cut.Find("[data-testid='interaction-undo']").ClickAsync();
         Assert.Contains("edit:1", cut.Find("[data-testid='binary-editor']").TextContent, StringComparison.Ordinal);

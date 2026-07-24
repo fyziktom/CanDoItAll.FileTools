@@ -5,7 +5,7 @@ using Microsoft.JSInterop;
 
 namespace CanDoItAll.FileTools.FileInteraction.Components.Tests;
 
-public sealed class FileObjectUrlInteropTests : BunitContext
+public sealed class FileObjectUrlInteropTests : FileToolsBunitContext
 {
     [Fact]
     public void ContentStamp_NewBackingBytesForSameMetadataRequiresRefresh()
@@ -118,12 +118,12 @@ public sealed class FileObjectUrlInteropTests : BunitContext
         var interop = new FileObjectUrlInterop(new RecordingJsRuntime(module));
 
         var first = interop.ApplyAsync(default, new byte[] { 1 }, "image/png", "src").AsTask();
-        await module.FirstApplyEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await module.FirstApplyEntered.Task.WaitAsync(AsyncOperationTimeout);
         var second = interop.ApplyAsync(default, new byte[] { 2 }, "image/png", "src").AsTask();
 
         Assert.Equal(1, module.ApplyCount);
         module.ReleaseNextApply();
-        await module.SecondApplyEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await module.SecondApplyEntered.Task.WaitAsync(AsyncOperationTimeout);
 
         Assert.False(await first);
         Assert.Equal(2, module.ApplyCount);
@@ -167,7 +167,7 @@ public sealed class FileObjectUrlInteropTests : BunitContext
         var replacement = cut.InvokeAsync(() => cut.Render(parameters => parameters
             .Add(component => component.Context, second)
             .Add(component => component.Kind, FileObjectViewKind.Image)));
-        await module.SecondApplyEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await module.SecondApplyEntered.Task.WaitAsync(AsyncOperationTimeout);
 
         Assert.True(cut.Find("[data-testid='interaction-image-view']").HasAttribute("hidden"));
         Assert.Equal(

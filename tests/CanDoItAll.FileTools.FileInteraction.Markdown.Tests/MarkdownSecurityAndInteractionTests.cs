@@ -10,7 +10,7 @@ using FileInteractionComponent = CanDoItAll.FileTools.FileInteraction.Components
 
 namespace CanDoItAll.FileTools.FileInteraction.Markdown.Tests;
 
-public sealed class MarkdownSecurityAndInteractionTests : BunitContext
+public sealed class MarkdownSecurityAndInteractionTests : FileToolsBunitContext
 {
     private const string ActiveElementSelector =
         "a, area, audio, base, embed, form, iframe, img, input, link, meta, object, script, source, style, svg, video";
@@ -105,7 +105,7 @@ public sealed class MarkdownSecurityAndInteractionTests : BunitContext
             () => Assert.Equal(
                 "Updated preview",
                 cut.Find("[data-testid='interaction-preview'] h2").TextContent),
-            TimeSpan.FromSeconds(2));
+            AsyncOperationTimeout);
         Assert.Empty(cut.FindAll("[data-testid='interaction-preview'] h1"));
     }
 

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace CanDoItAll.FileTools.FileInteraction.Components.Tests;
 
-public sealed class FileInteractionInteractiveTests : BunitContext
+public sealed class FileInteractionInteractiveTests : FileToolsBunitContext
 {
     [Fact]
     public async Task EditUndoRedoPreviewAndManualSave_DriveRenderedShellAndAwaitHost()
@@ -41,10 +41,10 @@ public sealed class FileInteractionInteractiveTests : BunitContext
                 "beta",
                 cut.Find("[data-testid='interaction-preview']").TextContent,
                 StringComparison.Ordinal),
-            TimeSpan.FromSeconds(2));
+            AsyncOperationTimeout);
 
         Task saving = cut.Find("[data-testid='interaction-save']").ClickAsync();
-        await hostEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await hostEntered.Task.WaitAsync(AsyncOperationTimeout);
         Assert.False(saving.IsCompleted);
         cut.WaitForAssertion(() => Assert.Equal("Saving…", Status(cut)));
         releaseHost.SetResult();
@@ -110,12 +110,12 @@ public sealed class FileInteractionInteractiveTests : BunitContext
             }));
 
         await cut.Find("textarea").InputAsync("beta");
-        var request = await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var request = await entered.Task.WaitAsync(AsyncOperationTimeout);
 
         Assert.True(request.IsAutomatic);
         cut.WaitForAssertion(() => Assert.Equal("Saving…", Status(cut)));
         release.SetResult();
-        cut.WaitForAssertion(() => Assert.Equal("Saved", Status(cut)), TimeSpan.FromSeconds(2));
+        cut.WaitForAssertion(() => Assert.Equal("Saved", Status(cut)), AsyncOperationTimeout);
     }
 
     [Fact]
@@ -317,14 +317,14 @@ public sealed class FileInteractionInteractiveTests : BunitContext
             .Add(component => component.StateChanged, states.Add));
 
         Task openingEditor = cut.Find("[data-testid='interaction-mode-edit']").ClickAsync();
-        await factory.Entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await factory.Entered.Task.WaitAsync(AsyncOperationTimeout);
         cut.Render(parameters => parameters
             .Add(component => component.Request, Request("second.block", FileInteractionMode.View))
             .Add(component => component.ContentSource, Source("second"))
             .Add(component => component.Composition, composition)
             .Add(component => component.StateChanged, states.Add));
         states.Clear();
-        await openingEditor.WaitAsync(TimeSpan.FromSeconds(2));
+        await openingEditor.WaitAsync(AsyncOperationTimeout);
 
         Assert.Contains("second", cut.Find("[data-testid='interaction-text-view']").TextContent);
         Assert.Equal("View mode", Status(cut));
