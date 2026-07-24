@@ -1,4 +1,4 @@
-﻿namespace CanDoItAll.FileTools.FileBrowser.Tests;
+namespace CanDoItAll.FileTools.FileBrowser.Tests;
 
 internal sealed class FakeFileBrowserProvider : IFileBrowserProvider, IFileBrowserSearchProvider
 {

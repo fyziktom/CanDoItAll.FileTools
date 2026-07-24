@@ -1,4 +1,4 @@
-﻿namespace CanDoItAll.FileTools.FileBrowser;
+namespace CanDoItAll.FileTools.FileBrowser;
 
 /// <summary>Current asynchronous operation exposed to renderers.</summary>
 public enum FileBrowserOperationKind

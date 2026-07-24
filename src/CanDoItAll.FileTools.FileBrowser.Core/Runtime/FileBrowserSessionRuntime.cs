@@ -1,4 +1,4 @@
-﻿namespace CanDoItAll.FileTools.FileBrowser;
+namespace CanDoItAll.FileTools.FileBrowser;
 
 /// <summary>
 /// Mutable browser workspace composed from focused owners. It coordinates modes and commit order

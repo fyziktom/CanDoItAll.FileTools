@@ -1,4 +1,4 @@
-﻿using CanDoItAll.FileTools.FileBrowser;
+using CanDoItAll.FileTools.FileBrowser;
 
 namespace CanDoItAll.FileTools.FileBrowser.Tests;
 

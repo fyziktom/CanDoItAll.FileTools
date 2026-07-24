@@ -1,4 +1,4 @@
-﻿namespace CanDoItAll.FileTools.FileBrowser;
+namespace CanDoItAll.FileTools.FileBrowser;
 
 /// <summary>Provides loaded-tree access and bounded browse calls to a search strategy.</summary>
 public interface IFileBrowserSearchData : IFileBrowserLoadedTree

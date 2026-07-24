@@ -2,11 +2,22 @@
 
 Storage-neutral .NET and Blazor building blocks for browsing, viewing, and editing file-like resources. The repository targets .NET 10 and keeps application storage drivers, authorization, application-triggered navigation, downloads, clipboard access, and persistence in the host. Browser-native viewer behavior, notably embedded PDF actions, remains browser-owned and is documented as an explicit boundary.
 
+## Ownership
+
+This repository owns the FileBrowser and FileInteraction contracts, runtime coordination,
+Blazor components, optional filesystem and Markdown adapters, and the host-side desktop
+launching boundary.
+
+It does not own application authorization, persistence, remote storage integrations,
+browser behavior, or application deployment. Hosts retain those responsibilities.
+`CanDoItAll.Components` continues to own unrelated general-purpose components.
+
 ## Choose packages
 
 | Need | Package | Direct dependencies |
 | --- | --- | --- |
 | Shared browser and interaction contracts only | `CanDoItAll.FileTools.Abstractions` | BCL only |
+| Host-side file and folder launching | `CanDoItAll.FileTools.Desktop` | BCL only |
 | Provider-neutral browsing, navigation, search, paging, retention, and invalidation | `CanDoItAll.FileTools.FileBrowser.Core` | Abstractions |
 | Responsive Blazor browser in Standard, Compact, or Minimal mode | `CanDoItAll.FileTools.FileBrowser.Components` | Abstractions, FileBrowser.Core, ASP.NET Core shared framework |
 | Root-confined local folder browsing plus Browser and Interaction range reads | `CanDoItAll.FileTools.Providers.FileSystem` | Abstractions |
@@ -15,6 +26,27 @@ Storage-neutral .NET and Blazor building blocks for browsing, viewing, and editi
 | Optional Markdown view/edit/preview renderer | `CanDoItAll.FileTools.FileInteraction.Markdown` | Abstractions, FileInteraction.Core, FileInteraction.Components, Markdig, ASP.NET Core shared framework |
 
 Install only the right-hand packages needed by the host. In particular, a browser-only application does not acquire Markdig or interaction renderers, and a custom provider can depend on Abstractions without taking Blazor.
+
+## Requirements
+
+- .NET SDK 10.0.301, pinned by `global.json` with latest-patch roll-forward
+- Windows PowerShell 5.1 or PowerShell 7 for packaging and package validation
+
+## Build and test
+
+Run from the repository root:
+
+```powershell
+dotnet restore .\CanDoItAll.FileTools.slnx --configfile .\NuGet.config
+dotnet build .\CanDoItAll.FileTools.slnx --configuration Release --no-restore
+dotnet test .\CanDoItAll.FileTools.slnx --configuration Release --no-build
+```
+
+Run the maintained Sandbox:
+
+```powershell
+dotnet run --project .\samples\CanDoItAll.FileTools.Sandbox\CanDoItAll.FileTools.Sandbox.csproj --configuration Release --no-build --no-restore
+```
 
 ## Minimal FileBrowser
 
@@ -97,16 +129,34 @@ FileBrowser ownership moved from `CanDoItAll.Components` to this standalone repo
 
 The new browser RCL does not depend on Components.BaseLib. Do not load the former global FileBrowser stylesheet or old `_content/CanDoItAll.Components.FileBrowser.BaseLib/...` paths; the new RCL uses isolated/collocated assets. `CanDoItAll.Components` continues to own simple general-purpose wrappers such as Mermaid, which hosts may register through the FileInteraction renderer seam.
 
+## Packaging
+
+Build all eight NuGet and symbol packages through the repository adapter, then inspect
+their dependency, metadata, readme, symbols, static assets, and hashes:
+
+```powershell
+.\tools\deployment\nugets\Build-NuGets.ps1 -Configuration Release
+.\tools\validation\Test-NuGetPackages.ps1
+```
+
+The tools write ignored local artifacts and never publish packages. See the
+[build and packaging guide](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/docs/build-and-packaging.md)
+for `-NoRestore`, `-NoBuild`, version overrides, and CI usage.
+
 ## Documentation
 
 - [Package architecture and dependency direction](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/docs/package-architecture.md)
 - [FileBrowser and provider guide](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/docs/file-browser.md)
 - [FileInteraction extension guide](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/docs/file-interaction.md)
+- [Native file-launching boundary](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/docs/architecture/native-file-launching.md)
 - [Host integration and security](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/docs/host-integration-security.md)
 - [Build, test, pack, and validate](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/docs/build-and-packaging.md)
 
 The Sandbox under `samples/CanDoItAll.FileTools.Sandbox` demonstrates composed UI scenarios. The separate integration architecture bundle is prepared for future CanDoItAll work; none of that future host-module wiring is claimed as shipped by these packages.
 
-## License
+## License and contributions
 
-MIT. See [LICENSE](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/LICENSE).
+The repository is licensed under
+[MIT](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/LICENSE).
+See the [contribution policy](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/CONTRIBUTING.md)
+and [security policy](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/SECURITY.md).

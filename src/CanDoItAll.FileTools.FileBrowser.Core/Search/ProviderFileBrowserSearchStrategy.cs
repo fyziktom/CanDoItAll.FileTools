@@ -1,4 +1,4 @@
-﻿namespace CanDoItAll.FileTools.FileBrowser;
+namespace CanDoItAll.FileTools.FileBrowser;
 
 /// <summary>Delegates full-source search to an indexed or provider-native implementation.</summary>
 public sealed class ProviderFileBrowserSearchStrategy : IFileBrowserSearchStrategy

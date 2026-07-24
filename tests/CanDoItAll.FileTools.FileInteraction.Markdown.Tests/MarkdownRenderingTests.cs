@@ -1,3 +1,4 @@
+using System.Text;
 using CanDoItAll.FileTools.FileInteraction;
 using CanDoItAll.FileTools.FileInteraction.Components;
 using CanDoItAll.FileTools.FileInteraction.Markdown;
@@ -6,7 +7,6 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Text;
 using FileInteractionComponent = CanDoItAll.FileTools.FileInteraction.Components.FileInteraction;
 
 namespace CanDoItAll.FileTools.FileInteraction.Markdown.Tests;

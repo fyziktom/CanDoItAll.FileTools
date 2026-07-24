@@ -1,4 +1,4 @@
-﻿namespace CanDoItAll.FileTools.FileBrowser;
+namespace CanDoItAll.FileTools.FileBrowser;
 
 /// <summary>Filters only the active materialized folder page.</summary>
 public sealed class LoadedFolderFileBrowserSearchStrategy : IFileBrowserSearchStrategy

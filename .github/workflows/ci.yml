@@ -22,7 +22,7 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore .\CanDoItAll.FileTools.slnx
+        run: dotnet restore .\CanDoItAll.FileTools.slnx --configfile .\NuGet.config
 
       - name: Build
         run: dotnet build .\CanDoItAll.FileTools.slnx -c Release --no-restore -warnaserror
@@ -35,8 +35,8 @@ jobs:
 
       - name: Pack
         shell: pwsh
-        run: .\scripts\pack-release.ps1 -Configuration Release -NoBuild -NoRestore
+        run: .\tools\deployment\nugets\Build-NuGets.ps1 -Configuration Release -NoBuild -NoRestore
 
       - name: Validate packages
         shell: pwsh
-        run: .\scripts\validate-packages.ps1
+        run: .\tools\validation\Test-NuGetPackages.ps1

@@ -1,4 +1,4 @@
-﻿namespace CanDoItAll.FileTools.FileBrowser;
+namespace CanDoItAll.FileTools.FileBrowser;
 
 /// <summary>A resolved root-to-container path used by navigation and breadcrumbs.</summary>
 public sealed record FileBrowserLocation

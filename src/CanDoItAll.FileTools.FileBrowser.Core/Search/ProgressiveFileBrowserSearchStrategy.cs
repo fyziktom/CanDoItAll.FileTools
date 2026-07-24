@@ -1,4 +1,4 @@
-﻿namespace CanDoItAll.FileTools.FileBrowser;
+namespace CanDoItAll.FileTools.FileBrowser;
 
 /// <summary>
 /// Performs an explicit, bounded breadth-first search by requesting shallow pages. Multi-page

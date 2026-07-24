@@ -1,4 +1,4 @@
-﻿namespace CanDoItAll.FileTools.FileBrowser.Tests;
+namespace CanDoItAll.FileTools.FileBrowser.Tests;
 
 public sealed class FileBrowserSessionTests
 {

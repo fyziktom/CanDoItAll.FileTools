@@ -1,4 +1,4 @@
-﻿namespace CanDoItAll.FileTools.FileBrowser;
+namespace CanDoItAll.FileTools.FileBrowser;
 
 /// <summary>Creates the deterministic ordering used by providers, mocks, and loaded searches.</summary>
 public sealed class FileBrowserItemComparer : IComparer<FileBrowserItem>

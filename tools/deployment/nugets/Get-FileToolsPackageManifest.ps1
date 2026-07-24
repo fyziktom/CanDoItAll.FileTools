@@ -9,6 +9,14 @@ function Get-FileToolsPackageManifest {
             IsRazorClassLibrary = $false
         }
         [pscustomobject]@{
+            Id = 'CanDoItAll.FileTools.Desktop'
+            Project = 'src/CanDoItAll.FileTools.Desktop/CanDoItAll.FileTools.Desktop.csproj'
+            Assembly = 'CanDoItAll.FileTools.Desktop'
+            ProjectReferences = @()
+            PackageReferences = @()
+            IsRazorClassLibrary = $false
+        }
+        [pscustomobject]@{
             Id = 'CanDoItAll.FileTools.FileBrowser.Core'
             Project = 'src/CanDoItAll.FileTools.FileBrowser.Core/CanDoItAll.FileTools.FileBrowser.Core.csproj'
             Assembly = 'CanDoItAll.FileTools.FileBrowser.Core'

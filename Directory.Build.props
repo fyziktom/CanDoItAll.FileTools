@@ -8,14 +8,25 @@
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <DefaultItemExcludes>
+      $(DefaultItemExcludes);
+      .artifacts/**;
+      .mcp-state/**;
+      output/**;
+      playwright-report/**;
+      test-results/**;
+      TestResults/**;
+      coverage/**;
+    </DefaultItemExcludes>
     <IsPackable>false</IsPackable>
     <Version>0.1.0</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <Authors>CanDoItAll</Authors>
     <Company>CanDoItAll</Company>
-    <PackageProjectUrl>https://github.com/fyziktom/CanDoItAll.FileTools</PackageProjectUrl>
+    <PackageProjectUrl>https://aicandoitall.com</PackageProjectUrl>
     <RepositoryUrl>https://github.com/fyziktom/CanDoItAll.FileTools</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -23,4 +34,3 @@
     <PackageTags>CanDoItAll;Files;FileBrowser;FileInteraction</PackageTags>
   </PropertyGroup>
 </Project>
-

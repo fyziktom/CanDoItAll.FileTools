@@ -10,6 +10,8 @@ Abstractions
 `-- FileInteraction.Core
     `-- FileInteraction.Components
         `-- FileInteraction.Markdown
+
+Desktop
 ```
 
 `FileInteraction.Markdown` also references Abstractions and FileInteraction.Core directly. The diagram shows the intended direction, not every transitive edge.
@@ -20,6 +22,7 @@ Abstractions
 - Core packages contain deterministic policy and runtime coordination. They do not reference Blazor, a concrete storage SDK, or CanDoItAll application assemblies.
 - Component packages are Razor class libraries over the corresponding core. They use the ASP.NET Core shared framework and isolated or collocated static assets.
 - Providers are leaf adapters into Abstractions. The included filesystem provider does not reference either UI package.
+- Desktop is an independent host-side adapter over the operating-system process boundary; UI packages consume it only through host callbacks.
 - Optional renderers extend the explicit `FileInteractionComponentBuilder`. Markdig is present only in the Markdown package.
 - Samples and tests are composition/verification projects and are never package dependencies.
 
@@ -35,4 +38,8 @@ The host also owns `IFileContentSource`, persistence, and authorization. FileInt
 
 ## Dependency policy enforcement
 
-`scripts/validate-packages.ps1` verifies both project references and packed dependency metadata against the seven-project manifest. It rejects Components/main-application dependencies, confines Markdig to the Markdown adapter, checks RCL assets, and requires assemblies plus XML documentation in every package.
+`tools/validation/Test-NuGetPackages.ps1` verifies both project references and packed
+dependency metadata against the eight-project manifest. It supports independently
+versioned packages, rejects Components/main-application dependencies, confines Markdig to
+the Markdown adapter, checks package provenance and RCL assets, and requires assemblies
+plus XML documentation in every package.

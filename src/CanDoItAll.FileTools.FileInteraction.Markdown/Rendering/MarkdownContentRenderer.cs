@@ -1,10 +1,10 @@
+using System.Globalization;
 using Markdig;
 using Markdig.Renderers;
 using Markdig.Renderers.Html;
 using Markdig.Renderers.Html.Inlines;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
-using System.Globalization;
 
 namespace CanDoItAll.FileTools.FileInteraction.Markdown;
 

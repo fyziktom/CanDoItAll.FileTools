@@ -1,10 +1,10 @@
 [CmdletBinding()]
 param(
     [ValidateNotNullOrEmpty()]
-    [string]$PackageDirectory = 'output/packages/release',
+    [string]$PackageDirectory = 'artifacts/packages',
 
     [ValidateNotNullOrEmpty()]
-    [string]$HashOutput = 'output/package-validation/package-hashes.sha256',
+    [string]$HashOutput = 'artifacts/package-validation/package-hashes.sha256',
 
     [string]$ExpectedHashesPath
 )
@@ -15,13 +15,13 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
-$repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$outputRoot = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot 'output'))
-$outputPrefix = $outputRoot.TrimEnd(
+$repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+$artifactsRoot = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot 'artifacts'))
+$artifactsPrefix = $artifactsRoot.TrimEnd(
     [System.IO.Path]::DirectorySeparatorChar,
     [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
 
-function Resolve-OutputPath([string]$Path, [string]$Label) {
+function Resolve-ArtifactPath([string]$Path, [string]$Label) {
     $resolved = if ([System.IO.Path]::IsPathRooted($Path)) {
         [System.IO.Path]::GetFullPath($Path)
     }
@@ -29,8 +29,8 @@ function Resolve-OutputPath([string]$Path, [string]$Label) {
         [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot $Path))
     }
 
-    if (-not $resolved.StartsWith($outputPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-        throw "$Label must be below '$outputRoot'."
+    if (-not $resolved.StartsWith($artifactsPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "$Label must be below '$artifactsRoot'."
     }
 
     return $resolved
@@ -127,10 +127,10 @@ function Assert-ProjectMetadata([pscustomobject]$Package) {
     }
 }
 
-. (Join-Path $PSScriptRoot 'package-manifest.ps1')
+. (Join-Path $repositoryRoot 'tools\deployment\nugets\Get-FileToolsPackageManifest.ps1')
 $packages = @(Get-FileToolsPackageManifest)
-if ($packages.Count -ne 7) {
-    throw "The validation manifest must contain exactly seven packages; found $($packages.Count)."
+if ($packages.Count -ne 8) {
+    throw "The validation manifest must contain exactly eight packages; found $($packages.Count)."
 }
 
 $duplicateIds = @($packages | Group-Object Id | Where-Object Count -gt 1)
@@ -145,6 +145,10 @@ $requiredBuildProperties = [ordered]@{
     Deterministic = 'true'
     GenerateDocumentationFile = 'true'
     Authors = 'CanDoItAll'
+    PackageProjectUrl = 'https://aicandoitall.com'
+    RepositoryUrl = 'https://github.com/fyziktom/CanDoItAll.FileTools'
+    RepositoryType = 'git'
+    PublishRepositoryUrl = 'true'
     PackageLicenseExpression = 'MIT'
     IncludeSymbols = 'true'
     SymbolPackageFormat = 'snupkg'
@@ -156,15 +160,15 @@ foreach ($property in $requiredBuildProperties.GetEnumerator()) {
     }
 }
 
-$packagePath = Resolve-OutputPath $PackageDirectory 'PackageDirectory'
-$hashPath = Resolve-OutputPath $HashOutput 'HashOutput'
+$packagePath = Resolve-ArtifactPath $PackageDirectory 'PackageDirectory'
+$hashPath = Resolve-ArtifactPath $HashOutput 'HashOutput'
 if (-not [System.IO.Directory]::Exists($packagePath)) {
     throw "Package directory '$packagePath' does not exist."
 }
 
 $expectedHashLines = $null
 if (-not [string]::IsNullOrWhiteSpace($ExpectedHashesPath)) {
-    $expectedHashPath = Resolve-OutputPath $ExpectedHashesPath 'ExpectedHashesPath'
+    $expectedHashPath = Resolve-ArtifactPath $ExpectedHashesPath 'ExpectedHashesPath'
     if (-not [System.IO.File]::Exists($expectedHashPath)) {
         throw "Expected hash manifest '$expectedHashPath' does not exist."
     }
@@ -185,9 +189,45 @@ if ($snupkgs.Count -ne $packages.Count) {
     throw "Expected $($packages.Count) snupkg files in '$packagePath'; found $($snupkgs.Count)."
 }
 
+$manifestIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($package in $packages) {
+    $manifestIds.Add($package.Id) | Out-Null
+}
+
+$packageVersions = [System.Collections.Generic.Dictionary[string, string]]::new(
+    [System.StringComparer]::OrdinalIgnoreCase)
+foreach ($nupkg in $nupkgs) {
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($nupkg.FullName)
+    try {
+        [xml]$nuspec = Read-Nuspec $archive $nupkg.FullName
+        $metadata = $nuspec.SelectSingleNode("/*[local-name()='package']/*[local-name()='metadata']")
+        if ($null -eq $metadata) {
+            throw "Package '$($nupkg.Name)' has no metadata node."
+        }
+
+        $id = Get-XmlNodeText $metadata "*[local-name()='id']"
+        $version = Get-XmlNodeText $metadata "*[local-name()='version']"
+        if (-not $manifestIds.Contains($id)) {
+            throw "Package '$($nupkg.Name)' has unexpected ID '$id'."
+        }
+
+        if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "Package '$id' has no version."
+        }
+
+        if ($packageVersions.ContainsKey($id)) {
+            throw "More than one package declares ID '$id'."
+        }
+
+        $packageVersions.Add($id, $version)
+    }
+    finally {
+        $archive.Dispose()
+    }
+}
+
 $seenNupkgs = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 $seenSnupkgs = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-$releaseVersion = $null
 
 foreach ($package in $packages) {
     Assert-ProjectMetadata $package
@@ -211,6 +251,8 @@ foreach ($package in $packages) {
         $authors = Get-XmlNodeText $metadata "*[local-name()='authors']"
         $license = Get-XmlNodeText $metadata "*[local-name()='license']"
         $readme = Get-XmlNodeText $metadata "*[local-name()='readme']"
+        $projectUrl = Get-XmlNodeText $metadata "*[local-name()='projectUrl']"
+        $repository = $metadata.SelectSingleNode("*[local-name()='repository']")
         if ($id -ne $package.Id) {
             throw "Package '$($nupkg.Name)' has ID '$id'; expected '$($package.Id)'."
         }
@@ -219,11 +261,8 @@ foreach ($package in $packages) {
             throw "Package '$id' has no version."
         }
 
-        if ($null -eq $releaseVersion) {
-            $releaseVersion = $version
-        }
-        elseif ($version -ne $releaseVersion) {
-            throw "Package '$id' has version '$version'; expected release version '$releaseVersion'."
+        if ($version -ne $packageVersions[$id]) {
+            throw "Package '$id' changed version while the package set was being inspected."
         }
 
         if ($authors -ne 'CanDoItAll' -or $license -ne 'MIT') {
@@ -232,6 +271,17 @@ foreach ($package in $packages) {
 
         if ($readme -ne 'README.md') {
             throw "Package '$id' must declare README.md as its package readme."
+        }
+
+        if ([string]::IsNullOrWhiteSpace($projectUrl) -or
+            $projectUrl.TrimEnd('/') -ne 'https://aicandoitall.com') {
+            throw "Package '$id' must use 'https://aicandoitall.com' as its project URL."
+        }
+
+        if ($null -eq $repository -or
+            $repository.GetAttribute('type') -ne 'git' -or
+            $repository.GetAttribute('url') -ne 'https://github.com/fyziktom/CanDoItAll.FileTools') {
+            throw "Package '$id' must publish its canonical Git repository metadata."
         }
 
         $expectedNupkgName = "$id.$version.nupkg"
@@ -275,8 +325,15 @@ foreach ($package in $packages) {
             $isInternalDependency = $dependencyId.StartsWith(
                 'CanDoItAll.FileTools.',
                 [System.StringComparison]::OrdinalIgnoreCase)
-            if ($isInternalDependency -and $dependencyNode.GetAttribute('version') -ne $releaseVersion) {
-                throw "Package '$id' must reference internal dependency '$dependencyId' at version '$releaseVersion'."
+            if ($isInternalDependency) {
+                if (-not $packageVersions.ContainsKey($dependencyId)) {
+                    throw "Package '$id' references internal package '$dependencyId' that is absent from the package set."
+                }
+
+                $expectedDependencyVersion = $packageVersions[$dependencyId]
+                if ($dependencyNode.GetAttribute('version') -ne $expectedDependencyVersion) {
+                    throw "Package '$id' must reference internal dependency '$dependencyId' at version '$expectedDependencyVersion'."
+                }
             }
         }
 
@@ -366,7 +423,7 @@ foreach ($package in $packages) {
 }
 
 if ($seenNupkgs.Count -ne $nupkgs.Count -or $seenSnupkgs.Count -ne $snupkgs.Count) {
-    throw "The package directory contains files that are not present in the seven-package manifest."
+    throw "The package directory contains files that are not present in the eight-package manifest."
 }
 
 $hashLines = @(

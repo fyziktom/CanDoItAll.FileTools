@@ -1,4 +1,4 @@
-﻿namespace CanDoItAll.FileTools.FileBrowser;
+namespace CanDoItAll.FileTools.FileBrowser;
 
 /// <summary>Validates untrusted provider pages before they enter retained or renderer-visible state.</summary>
 internal static class FileBrowserProviderResponseValidator

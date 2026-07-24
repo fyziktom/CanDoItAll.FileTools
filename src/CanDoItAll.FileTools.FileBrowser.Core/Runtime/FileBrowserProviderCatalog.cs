@@ -1,4 +1,4 @@
-﻿namespace CanDoItAll.FileTools.FileBrowser;
+namespace CanDoItAll.FileTools.FileBrowser;
 
 /// <summary>Read-only provider lookup used by a browser session.</summary>
 public interface IFileBrowserProviderCatalog
