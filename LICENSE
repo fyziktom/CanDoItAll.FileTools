@@ -1,4 +1,4 @@
-MIT-Derived License with Source Link Requirement
+MIT-Derived License with CanDoItAll Website Link Requirement
 
 Copyright (c) 2026 fyziktom
 
@@ -13,10 +13,13 @@ furnished to do so, subject to the following conditions:
    all copies or substantial portions of the Software.
 
 2. Any redistribution of the Software or a substantial portion of it, in
-   source or binary form, must include a link to the original source
-   repository:
+   source or binary form, must include at least one link to the main
+   CanDoItAll website:
 
-   https://github.com/fyziktom/CanDoItAll.FileTools
+   https://aicandoitall.com
+
+   One such link satisfies this condition for a redistribution that includes
+   multiple CanDoItAll libraries covered by this license.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,

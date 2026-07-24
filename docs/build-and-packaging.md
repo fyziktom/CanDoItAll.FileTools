@@ -67,7 +67,8 @@ Validation requires:
 
 - exactly one `.nupkg` and one `.snupkg` for each expected ID;
 - matching package ID, assembly, XML documentation, package readme, embedded
-  MIT-derived license with the canonical source link, and CanDoItAll author metadata;
+  MIT-derived license with the shared `https://aicandoitall.com` link, and CanDoItAll
+  author metadata;
 - distinct public project and source-repository URLs plus published Git provenance;
 - the package-specific versions selected by each project, including exact internal dependency versions;
 - the approved project-reference and packed dependency graph;

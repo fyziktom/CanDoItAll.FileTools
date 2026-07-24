@@ -166,9 +166,34 @@ if (-not [string]::IsNullOrWhiteSpace($licenseExpression)) {
 
 $repositoryLicensePath = Join-Path $repositoryRoot 'LICENSE'
 $repositoryLicenseText = [System.IO.File]::ReadAllText($repositoryLicensePath)
-if ($repositoryLicenseText -notmatch 'MIT-Derived License with Source Link Requirement' -or
-    $repositoryLicenseText -notmatch [regex]::Escape('https://github.com/fyziktom/CanDoItAll.FileTools')) {
-    throw "The repository LICENSE does not contain the required source-link contract."
+if ($repositoryLicenseText -notmatch 'MIT-Derived License with CanDoItAll Website Link Requirement' -or
+    $repositoryLicenseText -notmatch [regex]::Escape('https://aicandoitall.com') -or
+    $repositoryLicenseText -match [regex]::Escape('https://github.com/fyziktom/CanDoItAll.FileTools')) {
+    throw "The repository LICENSE does not contain the required shared website-link contract."
+}
+
+$repositoryReadmePath = Join-Path $repositoryRoot 'README.md'
+$repositoryReadmeText = [System.IO.File]::ReadAllText($repositoryReadmePath)
+$badgePackageIds = @(
+    'CanDoItAll.FileTools.FileBrowser.Components',
+    'CanDoItAll.FileTools.FileInteraction.Components'
+)
+foreach ($badgePackageId in $badgePackageIds) {
+    foreach ($badgeKind in @('v', 'dt')) {
+        $expectedBadgePath = "img.shields.io/nuget/$badgeKind/$badgePackageId"
+        if (-not $repositoryReadmeText.Contains($expectedBadgePath)) {
+            throw "README.md must include the $badgeKind badge for user-facing package '$badgePackageId'."
+        }
+    }
+}
+
+if ($repositoryReadmeText -match 'img\.shields\.io/nuget/(v|dt)/CanDoItAll\.FileTools\.Abstractions') {
+    throw "README.md must not use the dependency-layer Abstractions package for NuGet badges."
+}
+
+if (-not $repositoryReadmeText.Contains('MIT--derived%20with%20website%20link') -or
+    -not $repositoryReadmeText.Contains('https://aicandoitall.com')) {
+    throw "README.md must describe and badge the shared website-link license."
 }
 
 $packagePath = Resolve-ArtifactPath $PackageDirectory 'PackageDirectory'
