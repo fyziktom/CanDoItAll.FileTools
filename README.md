@@ -170,5 +170,9 @@ Redistributions in source or binary form must include at least one link to
 [aicandoitall.com](https://aicandoitall.com). One such link satisfies the added condition
 for a distribution containing multiple covered CanDoItAll libraries; retain each
 applicable copyright and permission notice.
-See the [contribution policy](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/CONTRIBUTING.md)
-and [security policy](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/SECURITY.md).
+
+Code contributions are limited to partners approved by the maintainer. See the
+[contribution policy](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/CONTRIBUTING.md)
+and contact the `fyziktom` account on LinkedIn before opening a pull request. Security
+reports must follow the
+[security policy](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/SECURITY.md).

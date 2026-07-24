@@ -1,10 +1,12 @@
 # Contributing
 
-## Contribution Policy
+CanDoItAll.FileTools accepts code contributions only from partners who have
+been explicitly approved by the maintainer. Unsolicited pull requests are not
+accepted.
 
-Issues and focused pull requests are welcome. Open an issue before a large public API,
-package-boundary, or compatibility change so the intended ownership and migration path
-can be agreed before implementation.
+To discuss becoming an approved partner, contact the maintainer on LinkedIn
+using the handle `fyziktom`. Please wait for approval before preparing or
+opening a pull request.
 
 Security reports must follow [SECURITY.md](SECURITY.md) and must not be filed as public
 issues.
@@ -54,6 +56,7 @@ The package build creates local artifacts and never publishes them.
 
 ## Pull Requests
 
+- Open a pull request only after partner approval.
 - Keep changes focused.
 - Add or update tests for behavior changes.
 - Describe public API, package-version, and migration effects.
