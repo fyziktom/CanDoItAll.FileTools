@@ -10,18 +10,45 @@ param(
     [switch]$NoBuild,
 
     [ValidatePattern('^[0-9A-Za-z][0-9A-Za-z.+-]*$')]
-    [string]$Version
+    [string]$Version = '',
+
+    [switch]$CreateRunDirectory
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
-if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
-    $OutputDirectory = Join-Path $repositoryRoot 'artifacts\packages'
+$effectiveVersion = $Version.Trim()
+if ([string]::IsNullOrWhiteSpace($effectiveVersion)) {
+    [xml]$directoryBuildProps = Get-Content -LiteralPath (
+        Join-Path $repositoryRoot 'Directory.Build.props'
+    ) -Raw
+    $versionNode = $directoryBuildProps.SelectSingleNode('/Project/PropertyGroup/Version')
+    if ($null -eq $versionNode -or [string]::IsNullOrWhiteSpace($versionNode.InnerText)) {
+        throw 'Directory.Build.props must define the committed package Version.'
+    }
+    $effectiveVersion = $versionNode.InnerText.Trim()
 }
-elseif (-not [System.IO.Path]::IsPathRooted($OutputDirectory)) {
-    $OutputDirectory = Join-Path $repositoryRoot $OutputDirectory
+
+if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
+    $outputRoot = Join-Path $repositoryRoot 'artifacts\packages'
+    $createRunDirectory = $true
+}
+elseif ([System.IO.Path]::IsPathRooted($OutputDirectory)) {
+    $outputRoot = $OutputDirectory
+    $createRunDirectory = $CreateRunDirectory.IsPresent
+}
+else {
+    $outputRoot = Join-Path $repositoryRoot $OutputDirectory
+    $createRunDirectory = $CreateRunDirectory.IsPresent
+}
+if ($createRunDirectory) {
+    $runTimestamp = Get-Date -Format 'yyyyMMdd-HHmmssfff'
+    $OutputDirectory = Join-Path $outputRoot "${effectiveVersion}_$runTimestamp"
+}
+else {
+    $OutputDirectory = $outputRoot
 }
 
 $OutputDirectory = [System.IO.Path]::GetFullPath($OutputDirectory)
@@ -70,12 +97,13 @@ else {
 
 if (-not $PSCmdlet.ShouldProcess(
         $OutputDirectory,
-        "$operation $($packages.Count) FileTools NuGet packages from '$($solutions[0].Name)'"
+        "$operation $($packages.Count) FileTools NuGet packages at version '$effectiveVersion' from '$($solutions[0].Name)'"
     )) {
     [pscustomobject]@{
         Repository = Split-Path $repositoryRoot -Leaf
         Solution = $solutions[0].Name
         Configuration = $Configuration
+        PackageVersion = $effectiveVersion
         OutputDirectory = $OutputDirectory
         PackageCount = $packages.Count
         Status = 'Preview'
@@ -108,9 +136,7 @@ foreach ($package in $packages) {
         $arguments += '--no-build'
     }
 
-    if (-not [string]::IsNullOrWhiteSpace($Version)) {
-        $arguments += "-p:PackageVersion=$Version"
-    }
+    $arguments += "-p:PackageVersion=$effectiveVersion"
 
     Write-Host "Packing $($package.Id)"
     & dotnet @arguments
@@ -123,6 +149,7 @@ foreach ($package in $packages) {
     Repository = Split-Path $repositoryRoot -Leaf
     Solution = $solutions[0].Name
     Configuration = $Configuration
+    PackageVersion = $effectiveVersion
     OutputDirectory = $OutputDirectory
     PackageCount = $packages.Count
     Status = 'Succeeded'

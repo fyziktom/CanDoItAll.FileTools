@@ -6,7 +6,7 @@
 [![FileInteraction.Components version](https://img.shields.io/nuget/v/CanDoItAll.FileTools.FileInteraction.Components.svg?logo=nuget&label=FileInteraction)](https://www.nuget.org/packages/CanDoItAll.FileTools.FileInteraction.Components)
 [![FileInteraction.Components downloads](https://img.shields.io/nuget/dt/CanDoItAll.FileTools.FileInteraction.Components.svg?logo=nuget&label=FileInteraction%20downloads)](https://www.nuget.org/packages/CanDoItAll.FileTools.FileInteraction.Components)
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/download/dotnet/10.0)
-[![License](https://img.shields.io/badge/license-MIT--derived%20with%20website%20link-blue.svg)](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/LICENSE)
 
 Storage-neutral .NET and Blazor building blocks for browsing, viewing, and editing file-like resources. The repository targets .NET 10 and keeps application storage drivers, authorization, application-triggered navigation, downloads, clipboard access, and persistence in the host. Browser-native viewer behavior, notably embedded PDF actions, remains browser-owned and is documented as an explicit boundary.
 
@@ -164,12 +164,8 @@ The Sandbox under `samples/CanDoItAll.FileTools.Sandbox` demonstrates composed U
 
 ## License and contributions
 
-The repository is licensed under
-[the MIT-derived license with CanDoItAll website-link requirement](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/LICENSE).
-Redistributions in source or binary form must include at least one link to
-[aicandoitall.com](https://aicandoitall.com). One such link satisfies the added condition
-for a distribution containing multiple covered CanDoItAll libraries; retain each
-applicable copyright and permission notice.
+The repository uses the
+[MIT License](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/LICENSE).
 
 Code contributions are limited to partners approved by the maintainer. See the
 [contribution policy](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/CONTRIBUTING.md)

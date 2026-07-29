@@ -159,17 +159,26 @@ foreach ($property in $requiredBuildProperties.GetEnumerator()) {
     }
 }
 
-$licenseExpression = Get-XmlNodeText $buildProps "/*[local-name()='Project']/*[local-name()='PropertyGroup']/*[local-name()='PackageLicenseExpression']"
-if (-not [string]::IsNullOrWhiteSpace($licenseExpression)) {
-    throw "Directory.Build.props must not use PackageLicenseExpression for the modified MIT-derived license."
+$buildTargetsPath = Join-Path $repositoryRoot 'Directory.Build.targets'
+[xml]$buildTargets = [System.IO.File]::ReadAllText($buildTargetsPath)
+$licenseExpression = Get-XmlNodeText $buildTargets "/*[local-name()='Project']/*[local-name()='PropertyGroup']/*[local-name()='PackageLicenseExpression']"
+if ($licenseExpression -ne 'MIT') {
+    throw "Directory.Build.targets must set PackageLicenseExpression to 'MIT'."
 }
 
 $repositoryLicensePath = Join-Path $repositoryRoot 'LICENSE'
 $repositoryLicenseText = [System.IO.File]::ReadAllText($repositoryLicensePath)
-if ($repositoryLicenseText -notmatch 'MIT-Derived License with CanDoItAll Website Link Requirement' -or
-    $repositoryLicenseText -notmatch [regex]::Escape('https://aicandoitall.com') -or
-    $repositoryLicenseText -match [regex]::Escape('https://github.com/fyziktom/CanDoItAll.FileTools')) {
-    throw "The repository LICENSE does not contain the required shared website-link contract."
+if ($repositoryLicenseText -notmatch 'Permission is hereby granted, free of charge' -or
+    $repositoryLicenseText -notmatch 'THE SOFTWARE IS PROVIDED "AS IS"' -or
+    $repositoryLicenseText -match 'website[- ]link requirement') {
+    throw "The repository LICENSE is not the canonical unmodified MIT license."
+}
+
+$repositoryIconPath = Join-Path $repositoryRoot 'docs\package-icon.png'
+$repositoryIconHash = (Get-FileHash -LiteralPath $repositoryIconPath -Algorithm SHA256).Hash
+$approvedIconHash = '02B338424A63193ECE3E25BC7E15A1E8F382E3E64C6DF80D24279C0C0FDA130E'
+if ($repositoryIconHash -ne $approvedIconHash) {
+    throw "docs/package-icon.png is not the approved SharedInfo package icon."
 }
 
 $repositoryReadmePath = Join-Path $repositoryRoot 'README.md'
@@ -191,9 +200,9 @@ if ($repositoryReadmeText -match 'img\.shields\.io/nuget/(v|dt)/CanDoItAll\.File
     throw "README.md must not use the dependency-layer Abstractions package for NuGet badges."
 }
 
-if (-not $repositoryReadmeText.Contains('MIT--derived%20with%20website%20link') -or
-    -not $repositoryReadmeText.Contains('https://aicandoitall.com')) {
-    throw "README.md must describe and badge the shared website-link license."
+if (-not $repositoryReadmeText.Contains('img.shields.io/badge/license-MIT-blue.svg') -or
+    -not $repositoryReadmeText.Contains('[MIT License]')) {
+    throw "README.md must describe and badge the MIT License."
 }
 
 $packagePath = Resolve-ArtifactPath $PackageDirectory 'PackageDirectory'
@@ -286,6 +295,7 @@ foreach ($package in $packages) {
         $version = Get-XmlNodeText $metadata "*[local-name()='version']"
         $authors = Get-XmlNodeText $metadata "*[local-name()='authors']"
         $license = $metadata.SelectSingleNode("*[local-name()='license']")
+        $icon = Get-XmlNodeText $metadata "*[local-name()='icon']"
         $readme = Get-XmlNodeText $metadata "*[local-name()='readme']"
         $projectUrl = Get-XmlNodeText $metadata "*[local-name()='projectUrl']"
         $repository = $metadata.SelectSingleNode("*[local-name()='repository']")
@@ -306,9 +316,13 @@ foreach ($package in $packages) {
         }
 
         if ($null -eq $license -or
-            $license.GetAttribute('type') -ne 'file' -or
-            $license.InnerText.Trim() -ne 'LICENSE') {
-            throw "Package '$id' must declare the repository LICENSE as a file license."
+            $license.GetAttribute('type') -ne 'expression' -or
+            $license.InnerText.Trim() -ne 'MIT') {
+            throw "Package '$id' must declare the SPDX MIT license expression."
+        }
+
+        if ($icon -ne 'package-icon.png') {
+            throw "Package '$id' must declare package-icon.png as its package icon."
         }
 
         if ($readme -ne 'README.md') {
@@ -346,20 +360,33 @@ foreach ($package in $packages) {
             throw "Package '$id' must contain README.md at the package root."
         }
 
-        if ($entryNames -cnotcontains 'LICENSE') {
-            throw "Package '$id' must contain LICENSE at the package root."
+        if ($entryNames -cnotcontains 'package-icon.png') {
+            throw "Package '$id' must contain package-icon.png at the package root."
         }
 
-        $licenseEntry = $archive.GetEntry('LICENSE')
-        $licenseReader = [System.IO.StreamReader]::new($licenseEntry.Open())
+        $iconEntry = $archive.GetEntry('package-icon.png')
+        $iconStream = $iconEntry.Open()
+        $iconMemory = [System.IO.MemoryStream]::new()
         try {
-            $licenseText = $licenseReader.ReadToEnd()
-            if ($licenseText -cne $repositoryLicenseText) {
-                throw "Package '$id' contains a LICENSE that differs from the repository LICENSE."
+            $iconStream.CopyTo($iconMemory)
+            $iconBytes = $iconMemory.ToArray()
+            $sha256 = [System.Security.Cryptography.SHA256]::Create()
+            try {
+                $packedIconHash = (
+                    $sha256.ComputeHash($iconBytes) |
+                        ForEach-Object { $_.ToString('X2') }
+                ) -join ''
+            }
+            finally {
+                $sha256.Dispose()
+            }
+            if ($packedIconHash -ne $repositoryIconHash) {
+                throw "Package '$id' does not contain the approved repository package icon."
             }
         }
         finally {
-            $licenseReader.Dispose()
+            $iconMemory.Dispose()
+            $iconStream.Dispose()
         }
 
         $readmeEntry = $archive.GetEntry('README.md')

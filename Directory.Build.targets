@@ -4,8 +4,7 @@
     <_UseRepositoryPackageReadme>true</_UseRepositoryPackageReadme>
   </PropertyGroup>
   <PropertyGroup Condition="'$(IsPackable)' == 'true' and '$(PackageLicenseExpression)' == '' and '$(PackageLicenseFile)' == ''">
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <_UseRepositoryPackageLicense>true</_UseRepositoryPackageLicense>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup Condition="'$(_UseRepositoryPackageReadme)' == 'true'">
     <None Include="$(MSBuildThisFileDirectory)README.md"
@@ -13,10 +12,38 @@
           PackagePath="\"
           Link="README.md" />
   </ItemGroup>
-  <ItemGroup Condition="'$(_UseRepositoryPackageLicense)' == 'true'">
-    <None Include="$(MSBuildThisFileDirectory)LICENSE"
+  <PropertyGroup Condition="'$(IsPackable)' == 'true' and '$(PackageIcon)' == ''">
+    <_RepositoryPackageIconPath>$(MSBuildThisFileDirectory)docs\package-icon.png</_RepositoryPackageIconPath>
+    <PackageIcon>package-icon.png</PackageIcon>
+    <_UseRepositoryPackageIcon>true</_UseRepositoryPackageIcon>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(_UseRepositoryPackageIcon)' == 'true' and Exists('$(_RepositoryPackageIconPath)')">
+    <None Remove="$(_RepositoryPackageIconPath)" />
+    <None Include="$(_RepositoryPackageIconPath)"
           Pack="true"
           PackagePath="\"
-          Link="LICENSE" />
+          Link="package-icon.png" />
   </ItemGroup>
+  <PropertyGroup Condition="'$(IsPackable)' == 'true' and '$(PackageThirdPartyNoticesFile)' == '' and Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md')">
+    <PackageThirdPartyNoticesFile>THIRD-PARTY-NOTICES.md</PackageThirdPartyNoticesFile>
+    <_UseRepositoryThirdPartyNotices>true</_UseRepositoryThirdPartyNotices>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(_UseRepositoryThirdPartyNotices)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md"
+          Pack="true"
+          PackagePath="\"
+          Link="THIRD-PARTY-NOTICES.md" />
+  </ItemGroup>
+  <Target Name="ValidateCanDoItAllPackageLegalAndIconMetadata"
+          BeforeTargets="Pack"
+          Condition="'$(IsPackable)' == 'true'">
+    <Error Condition="'$(PackageLicenseExpression)' != 'MIT'"
+           Text="CanDoItAll packages must use PackageLicenseExpression MIT." />
+    <Error Condition="'$(PackageLicenseFile)' != ''"
+           Text="CanDoItAll packages using pure MIT must not set PackageLicenseFile." />
+    <Error Condition="'$(PackageIcon)' != 'package-icon.png'"
+           Text="CanDoItAll packages must declare package-icon.png." />
+    <Error Condition="!Exists('$(MSBuildThisFileDirectory)docs\package-icon.png')"
+           Text="Copy the approved SharedInfo package icon to docs\package-icon.png before packing." />
+  </Target>
 </Project>

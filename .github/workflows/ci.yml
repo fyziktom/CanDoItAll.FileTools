@@ -35,8 +35,6 @@ jobs:
 
       - name: Pack
         shell: pwsh
-        run: .\tools\deployment\nugets\Build-NuGets.ps1 -Configuration Release -NoBuild -NoRestore
-
-      - name: Validate packages
-        shell: pwsh
-        run: .\tools\validation\Test-NuGetPackages.ps1
+        run: |
+          $packageBuild = .\tools\deployment\nugets\Build-NuGets.ps1 -Configuration Release -NoBuild -NoRestore
+          .\tools\validation\Test-NuGetPackages.ps1 -PackageDirectory $packageBuild.OutputDirectory

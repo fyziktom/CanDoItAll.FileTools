@@ -34,8 +34,9 @@ After a Release build, create packages without rebuilding:
 .\tools\validation\Test-NuGetPackages.ps1
 ```
 
-The default package directory is `artifacts/packages`; validation writes a sorted SHA-256
-manifest to `artifacts/package-validation/package-hashes.sha256`. The package builder
+The default package directory is `artifacts/packages/<version>_<timestamp>`; validation
+writes a sorted SHA-256 manifest to `artifacts/package-validation/package-hashes.sha256`.
+The package builder
 accepts an absolute or repository-relative output directory as required by the shared
 CanDoItAll NuGet adapter contract. The validator confines its generated hash manifest and
 validated local package set to the repository's ignored `artifacts` directory. Nothing is
@@ -66,9 +67,8 @@ packages accidentally.
 Validation requires:
 
 - exactly one `.nupkg` and one `.snupkg` for each expected ID;
-- matching package ID, assembly, XML documentation, package readme, embedded
-  MIT-derived license with the shared `https://aicandoitall.com` link, and CanDoItAll
-  author metadata;
+- matching package ID, assembly, XML documentation, package readme, SPDX MIT license
+  expression, approved package icon, and CanDoItAll author metadata;
 - distinct public project and source-repository URLs plus published Git provenance;
 - the package-specific versions selected by each project, including exact internal dependency versions;
 - the approved project-reference and packed dependency graph;
