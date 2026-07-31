@@ -37,7 +37,7 @@ Install only the right-hand packages needed by the host. In particular, a browse
 
 ## Requirements
 
-- .NET SDK 10.0.301, pinned by `global.json` with latest-patch roll-forward
+- .NET SDK 10.0.302, pinned by `global.json` with latest-patch roll-forward
 - Windows PowerShell 5.1 or PowerShell 7 for packaging and package validation
 
 ## Build and test

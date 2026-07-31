@@ -19,6 +19,32 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+$globalJsonPath = Join-Path $repositoryRoot 'global.json'
+if (-not (Test-Path -LiteralPath $globalJsonPath -PathType Leaf)) {
+    throw "global.json was not found at '$globalJsonPath'."
+}
+
+function Invoke-DotNet {
+    param(
+        [Parameter(Mandatory)]
+        [string[]]$Arguments,
+
+        [Parameter(Mandatory)]
+        [string]$FailureMessage
+    )
+
+    Push-Location -LiteralPath $repositoryRoot
+    try {
+        & dotnet @Arguments
+        if ($LASTEXITCODE -ne 0) {
+            throw "$FailureMessage Exit code: $LASTEXITCODE."
+        }
+    }
+    finally {
+        Pop-Location
+    }
+}
+
 $effectiveVersion = $Version.Trim()
 if ([string]::IsNullOrWhiteSpace($effectiveVersion)) {
     [xml]$directoryBuildProps = Get-Content -LiteralPath (
@@ -114,10 +140,15 @@ if (-not $PSCmdlet.ShouldProcess(
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 
 if (-not $NoRestore) {
-    & dotnet restore $solutions[0].FullName --configfile (Join-Path $repositoryRoot 'NuGet.config')
-    if ($LASTEXITCODE -ne 0) {
-        throw "dotnet restore failed with exit code $LASTEXITCODE."
-    }
+    $restoreArguments = @(
+        'restore'
+        $solutions[0].FullName
+        '--configfile'
+        (Join-Path $repositoryRoot 'NuGet.config')
+    )
+    Invoke-DotNet `
+        -Arguments $restoreArguments `
+        -FailureMessage 'dotnet restore failed.'
 }
 
 foreach ($package in $packages) {
@@ -139,10 +170,9 @@ foreach ($package in $packages) {
     $arguments += "-p:PackageVersion=$effectiveVersion"
 
     Write-Host "Packing $($package.Id)"
-    & dotnet @arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "dotnet pack failed for '$($package.Id)' with exit code $LASTEXITCODE."
-    }
+    Invoke-DotNet `
+        -Arguments $arguments `
+        -FailureMessage "dotnet pack failed for '$($package.Id)'."
 }
 
 [pscustomobject]@{

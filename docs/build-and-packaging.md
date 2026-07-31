@@ -1,6 +1,6 @@
 # Build, test, and packaging
 
-The repository is pinned by `global.json` to .NET SDK 10.0.301 with latest-patch
+The repository is pinned by `global.json` to .NET SDK 10.0.302 with latest-patch
 roll-forward. Package metadata is centralized in `Directory.Build.props`;
 `Directory.Build.targets` supplies the repository README and license to packable projects
 that do not define package-specific files. NuGet versions are centralized in
