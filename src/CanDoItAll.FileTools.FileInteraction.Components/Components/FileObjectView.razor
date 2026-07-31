@@ -1,53 +1,19 @@
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
-@if (Kind == FileObjectViewKind.Image)
-{
-    <div class="cdi-ft-object-surface cdi-ft-object-surface--image"
-         hidden="@(Context.IsEmpty || interopError is not null || !isReady)"
-         aria-hidden="@(Context.IsEmpty || interopError is not null || !isReady)"
-         data-testid="interaction-image-view">
-        <img @key="previousStamp"
-             @ref="target"
-             alt="@Context.Request.FileName"
-             @onload="HandleTargetLoaded"
-             @onerror="HandleTargetError" />
-    </div>
-}
-else if (Kind == FileObjectViewKind.Pdf)
-{
-    <div class="cdi-ft-object-surface"
-         hidden="@(Context.IsEmpty || interopError is not null || !isReady)"
-         aria-hidden="@(Context.IsEmpty || interopError is not null || !isReady)"
-         data-testid="interaction-pdf-view">
-        <object @key="previousStamp"
-                @ref="target"
-                type="@EffectiveMediaType"
-                aria-label="@Context.Request.FileName"
-                @onload="HandleTargetLoaded"
-                @onerror="HandleTargetError">
-            <div class="cdi-ft-object-state">
-                This browser cannot display the file. Use a host-provided action to open or download it.
-            </div>
-        </object>
-    </div>
-}
-else
-{
-    <div class="cdi-ft-object-surface cdi-ft-object-surface--browser"
-         hidden="@(Context.IsEmpty || interopError is not null || !isReady)"
-         aria-hidden="@(Context.IsEmpty || interopError is not null || !isReady)"
-         data-testid="interaction-browser-view">
-        <iframe @key="previousStamp"
-                @ref="target"
-                title="@Context.Request.FileName"
-                sandbox=""
-                referrerpolicy="no-referrer"
-                @onload="HandleTargetLoaded"
-                @onerror="HandleTargetError">
-        </iframe>
-    </div>
-}
+<div class="@SurfaceClass"
+     hidden="@(Context.IsEmpty || interopError is not null || !isReady)"
+     aria-hidden="@(Context.IsEmpty || interopError is not null || !isReady)"
+     data-testid="@SurfaceTestId">
+    @if (TargetFrame is null)
+    {
+        @TargetContent
+    }
+    else
+    {
+        @TargetFrame(new FileObjectViewTargetFrameContext(Kind, TargetContent))
+    }
+</div>
 
 @if (Context.IsEmpty)
 {
@@ -66,6 +32,9 @@ else if (interopError is not null)
     [Parameter]
     public FileObjectViewKind Kind { get; set; }
 
+    [Parameter]
+    public RenderFragment<FileObjectViewTargetFrameContext>? TargetFrame { get; set; }
+
     private ElementReference target;
     private ElementReference activeTarget;
     private FileObjectUrlInterop? interop;
@@ -79,6 +48,55 @@ else if (interopError is not null)
 
     private string EffectiveMediaType => Context.MediaType
         ?? (Kind == FileObjectViewKind.Pdf ? "application/pdf" : "application/octet-stream");
+
+    private string SurfaceClass => Kind switch
+    {
+        FileObjectViewKind.Image => "cdi-ft-object-surface cdi-ft-object-surface--image",
+        FileObjectViewKind.Pdf => "cdi-ft-object-surface",
+        _ => "cdi-ft-object-surface cdi-ft-object-surface--browser"
+    };
+
+    private string SurfaceTestId => Kind switch
+    {
+        FileObjectViewKind.Image => "interaction-image-view",
+        FileObjectViewKind.Pdf => "interaction-pdf-view",
+        _ => "interaction-browser-view"
+    };
+
+    private RenderFragment TargetContent => @<text>
+        @if (Kind == FileObjectViewKind.Image)
+        {
+            <img @key="previousStamp"
+                 @ref="target"
+                 alt="@Context.Request.FileName"
+                 @onload="HandleTargetLoaded"
+                 @onerror="HandleTargetError" />
+        }
+        else if (Kind == FileObjectViewKind.Pdf)
+        {
+            <object @key="previousStamp"
+                    @ref="target"
+                    type="@EffectiveMediaType"
+                    aria-label="@Context.Request.FileName"
+                    @onload="HandleTargetLoaded"
+                    @onerror="HandleTargetError">
+                <div class="cdi-ft-object-state">
+                    This browser cannot display the file. Use a host-provided action to open or download it.
+                </div>
+            </object>
+        }
+        else
+        {
+            <iframe @key="previousStamp"
+                    @ref="target"
+                    title="@Context.Request.FileName"
+                    sandbox=""
+                    referrerpolicy="no-referrer"
+                    @onload="HandleTargetLoaded"
+                    @onerror="HandleTargetError">
+            </iframe>
+        }
+    </text>;
 
     protected override void OnParametersSet()
     {
@@ -108,7 +126,8 @@ else if (interopError is not null)
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (interopError is not null || (!firstRender && !contentChanged))
+        var targetChanged = hasActiveTarget && !target.Equals(activeTarget);
+        if (interopError is not null || (!firstRender && !contentChanged && !targetChanged))
         {
             return;
         }
@@ -131,6 +150,7 @@ else if (interopError is not null)
         contentChanged = false;
         isApplying = true;
         var appliedStamp = previousStamp;
+        var appliedTarget = target;
         try
         {
             if (hasActiveTarget)
@@ -140,7 +160,7 @@ else if (interopError is not null)
             }
 
             var applied = await interop.ApplyAsync(
-                target,
+                appliedTarget,
                 Context.Content,
                 EffectiveMediaType,
                 Kind == FileObjectViewKind.Pdf ? "data" : "src");
@@ -149,7 +169,7 @@ else if (interopError is not null)
                 return;
             }
 
-            activeTarget = target;
+            activeTarget = appliedTarget;
             hasActiveTarget = true;
             isApplying = false;
             isReady = Kind is FileObjectViewKind.Pdf or FileObjectViewKind.Browser;

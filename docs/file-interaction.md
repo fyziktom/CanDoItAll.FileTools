@@ -6,7 +6,7 @@ The shell bounds full-content loading with `MaximumContentBytes` (16 MiB by defa
 
 ## Composition and resolution
 
-Use `FileInteractionComponentBuilder` to register profiles, history factories, and renderer descriptors. `AddBuiltIns` supplies text view/edit, raster-image view, browser-native PDF view, inert metadata-only SVG, and an inert metadata-only fallback. SVG is deliberately excluded from the raster profile. `AddMarkdown` contributes the optional higher-priority Markdown profile and renderer.
+Use `FileInteractionComponentBuilder` to register profiles, history factories, and renderer descriptors. `AddBuiltIns` supplies text view/edit, raster-image view, browser-native PDF view, an SVG browser-frame view, and a browser-frame fallback; both frames use an empty `sandbox` capability set. SVG is deliberately excluded from the raster profile. `AddMarkdown` contributes the optional higher-priority Markdown profile and renderer.
 
 Profile resolution considers requested mode/capability and type evidence. Exact media types score above media-type wildcards, exact extensions, and fallback patterns; priority breaks ties at the best match kind. An equal final result is reported as ambiguous rather than selected arbitrarily.
 
@@ -28,6 +28,8 @@ Registrations are explicit: an application that uses only images can build a sma
 4. Register the profile before building the immutable composition. A renderer that names an unknown profile is rejected.
 
 Custom renderers should keep application effects event-up. They must not directly download, mutate storage, open local paths, or treat content as trusted markup. The built-in browser-native PDF `<object>` is an explicit boundary: embedded links/actions are controlled by the browser/PDF viewer and are not converted into FileInteraction host callbacks. A host that must mediate every PDF action should register/use a different renderer or route PDFs elsewhere. Collocated JavaScript modules and CSS isolation keep type-specific behavior scoped; clean up object URLs, listeners, and module references on replacement/disposal.
+
+`FileObjectView.TargetFrame` is the host-composition seam for decorating the actual `<img>`, `<object>`, or sandboxed `<iframe>`. Its `FileObjectViewTargetFrameContext` supplies the `Kind` and the `TargetContent` fragment. A host renderer can place that fragment inside a zoom/pan component while `FileObjectView` continues to own bounded bytes, object-URL replacement/disposal, loading and error state, and browser-frame security attributes. Render `TargetContent` unchanged and exactly once. SVG adapters must retain `FileObjectViewKind.Browser`; do not replace the sandboxed frame with inline SVG.
 
 ## Controlled mode
 

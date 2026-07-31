@@ -23,7 +23,7 @@ Display paths, content identities, open/download URIs, provider action values, c
 
 ## Untrusted content
 
-Treat file bytes, names, metadata, Markdown, warning/error text, and provider labels as untrusted. Razor text rendering is encoded by default. The base raster-image/PDF components create component-owned object URLs and revoke them on replacement/disposal. SVG is routed to an inert metadata-only profile rather than the image viewer, and the arbitrary fallback is also inert metadata.
+Treat file bytes, names, metadata, Markdown, warning/error text, and provider labels as untrusted. Razor text rendering is encoded by default. The base raster-image, PDF, and browser-frame components create component-owned object URLs and revoke them on replacement/disposal. SVG and arbitrary fallback content are routed to an `<iframe>` with an empty `sandbox` capability set and a `no-referrer` policy; payload bytes are never injected into the host document. This blocks scripts and privileged frame interactions, but iframe sandboxing is not a network-isolation boundary: embedded markup can still request subresources. A host that requires zero preview egress must provide a stricter renderer or isolated-origin policy. A host-supplied `FileObjectView.TargetFrame` may decorate the target but must render the supplied `TargetContent` unchanged so the sandbox remains the document boundary.
 
 PDF is rendered through the browser's native `<object>` surface. Embedded PDF links/actions are browser/PDF-viewer behavior and do not pass through `ItemInvoked`, `ActionRequested`, or another FileInteraction host callback. Use a different renderer or external host flow when every navigation/action must be mediated by application authorization.
 

@@ -19,6 +19,21 @@ public enum FileObjectViewKind
     Browser
 }
 
+public sealed class FileObjectViewTargetFrameContext
+{
+    internal FileObjectViewTargetFrameContext(
+        FileObjectViewKind kind,
+        RenderFragment targetContent)
+    {
+        Kind = kind;
+        TargetContent = targetContent ?? throw new ArgumentNullException(nameof(targetContent));
+    }
+
+    public FileObjectViewKind Kind { get; }
+
+    public RenderFragment TargetContent { get; }
+}
+
 internal readonly record struct FileObjectContentStamp(
     FileReference File,
     long EditRevision,

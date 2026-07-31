@@ -333,7 +333,7 @@ public sealed class SandboxInteractionGateway : IFileContentSource
         yield return new Entry(
             new SandboxInteractionSample(
                 "object", "Unsupported object", "archive.zip",
-                "Metadata-only inert fallback; the payload is never embedded or executed.",
+                "Bounded payload rendered in a capability-sandboxed browser frame; this is not a network-isolation boundary.",
                 "fallback", false, false),
             Reference("object"),
             [80, 75, 3, 4],

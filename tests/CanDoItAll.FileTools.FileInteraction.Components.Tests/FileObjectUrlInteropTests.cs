@@ -246,6 +246,109 @@ public sealed class FileObjectUrlInteropTests : FileToolsBunitContext
         Assert.Equal("src", Assert.IsType<string>(invocation.Arguments[3]));
     }
 
+    [Theory]
+    [InlineData(FileObjectViewKind.Image, "image/png", "interaction-image-view", "img")]
+    [InlineData(FileObjectViewKind.Pdf, "application/pdf", "interaction-pdf-view", "object")]
+    [InlineData(FileObjectViewKind.Browser, "image/svg+xml", "interaction-browser-view", "iframe")]
+    public void DefaultTarget_RendersDirectlyInsideTheExistingSurface(
+        FileObjectViewKind kind,
+        string mediaType,
+        string surfaceTestId,
+        string targetSelector)
+    {
+        var module = JSInterop.SetupModule(FileObjectUrlInterop.ModulePath);
+        module.SetupVoid(FileObjectUrlInterop.ApplyMethod, _ => true).SetVoidResult();
+        var context = CreateContext("sample.bin", mediaType);
+
+        var cut = Render<FileObjectView>(parameters => parameters
+            .Add(component => component.Context, context)
+            .Add(component => component.Kind, kind));
+
+        Assert.NotNull(cut.Find($"[data-testid='{surfaceTestId}'] > {targetSelector}"));
+        Assert.Empty(cut.FindAll("[data-testid='target-frame']"));
+    }
+
+    [Fact]
+    public async Task TargetFrame_WrapsImageTargetWithoutChangingLoadOrErrorHandling()
+    {
+        var module = JSInterop.SetupModule(FileObjectUrlInterop.ModulePath);
+        var apply = module.SetupVoid(FileObjectUrlInterop.ApplyMethod, _ => true).SetVoidResult();
+        var context = CreateContext("photo.png", "image/png");
+        var cut = Render<FileObjectView>(parameters => parameters
+            .Add(component => component.Context, context)
+            .Add(component => component.Kind, FileObjectViewKind.Image)
+            .Add(component => component.TargetFrame, TargetFrame));
+
+        var surface = cut.Find("[data-testid='interaction-image-view']");
+        var frame = cut.Find("[data-testid='target-frame']");
+        Assert.Equal("interaction-image-view", frame.ParentElement?.GetAttribute("data-testid"));
+        Assert.NotNull(frame.QuerySelector(":scope > img"));
+        Assert.Equal(nameof(FileObjectViewKind.Image), frame.GetAttribute("data-kind"));
+        Assert.Equal("src", Assert.IsType<string>(Assert.Single(apply.Invocations).Arguments[3]));
+
+        await cut.Find("img").TriggerEventAsync("onload", EventArgs.Empty);
+        Assert.False(surface.HasAttribute("hidden"));
+
+        await cut.Find("img").TriggerEventAsync("onerror", EventArgs.Empty);
+        Assert.True(surface.HasAttribute("hidden"));
+        Assert.Null(frame.QuerySelector("[data-testid='interaction-object-fallback']"));
+        Assert.NotNull(cut.Find("[data-testid='interaction-object-fallback']"));
+    }
+
+    [Fact]
+    public void TargetFrame_WrapsSvgSandboxWithoutReplacingItsSecurityBoundary()
+    {
+        var module = JSInterop.SetupModule(FileObjectUrlInterop.ModulePath);
+        var apply = module.SetupVoid(FileObjectUrlInterop.ApplyMethod, _ => true).SetVoidResult();
+        var context = CreateContext("hostile.svg", "image/svg+xml");
+        var cut = Render<FileObjectView>(parameters => parameters
+            .Add(component => component.Context, context)
+            .Add(component => component.Kind, FileObjectViewKind.Browser)
+            .Add(component => component.TargetFrame, TargetFrame));
+
+        var surface = cut.Find("[data-testid='interaction-browser-view']");
+        var frame = cut.Find("[data-testid='target-frame']");
+        var iframe = frame.QuerySelector(":scope > iframe");
+        Assert.Equal("interaction-browser-view", frame.ParentElement?.GetAttribute("data-testid"));
+        Assert.NotNull(iframe);
+        Assert.Equal(nameof(FileObjectViewKind.Browser), frame.GetAttribute("data-kind"));
+        Assert.Equal(string.Empty, iframe.GetAttribute("sandbox"));
+        Assert.Equal("no-referrer", iframe.GetAttribute("referrerpolicy"));
+        Assert.Empty(frame.QuerySelectorAll("img, object, svg"));
+        var invocation = Assert.Single(apply.Invocations);
+        Assert.Equal("src", Assert.IsType<string>(invocation.Arguments[3]));
+        Assert.Equal(context.Content.ToArray(), Assert.IsType<byte[]>(invocation.Arguments[1]));
+    }
+
+    [Fact]
+    public void TargetFrameReplacement_RebindsTheObjectUrlToTheNewTarget()
+    {
+        var module = JSInterop.SetupModule(FileObjectUrlInterop.ModulePath);
+        var apply = module.SetupVoid(FileObjectUrlInterop.ApplyMethod, _ => true).SetVoidResult();
+        var revoke = module.SetupVoid(FileObjectUrlInterop.RevokeMethod, _ => true).SetVoidResult();
+        var context = CreateContext("photo.png", "image/png");
+        var cut = Render<FileObjectView>(parameters => parameters
+            .Add(component => component.Context, context)
+            .Add(component => component.Kind, FileObjectViewKind.Image)
+            .Add(component => component.TargetFrame, CreateTargetFrame("first")));
+        var firstTarget = Assert.IsType<ElementReference>(
+            Assert.Single(apply.Invocations).Arguments[0]);
+
+        cut.Render(parameters => parameters
+            .Add(component => component.Context, context)
+            .Add(component => component.Kind, FileObjectViewKind.Image)
+            .Add(component => component.TargetFrame, CreateTargetFrame("second")));
+
+        Assert.Equal(2, apply.Invocations.Count);
+        var secondTarget = Assert.IsType<ElementReference>(
+            apply.Invocations.ElementAt(1).Arguments[0]);
+        Assert.NotEqual(firstTarget.Id, secondTarget.Id);
+        var revokedTarget = Assert.IsType<ElementReference>(
+            Assert.Single(revoke.Invocations).Arguments[0]);
+        Assert.Equal(firstTarget.Id, revokedTarget.Id);
+        Assert.Equal("second", cut.Find("[data-testid='target-frame']").GetAttribute("data-frame-key"));
+    }
+
     [Fact]
     public async Task ImageDecodeFailure_HidesTargetAndShowsInertFallback()
     {
@@ -273,6 +376,35 @@ public sealed class FileObjectUrlInteropTests : FileToolsBunitContext
             cut.Find("[data-testid='interaction-object-fallback']").TextContent,
             StringComparison.Ordinal);
     }
+
+    private static FileInteractionRenderContext CreateContext(string fileName, string mediaType)
+    {
+        var request = new FileInteractionRequest(
+            new FileReference("test", fileName),
+            fileName,
+            mediaType: mediaType);
+        return new FileInteractionRenderContext(
+            request,
+            FileInteractionMode.View,
+            new byte[] { 1, 2, 3 },
+            0,
+            mediaType);
+    }
+
+    private static RenderFragment<FileObjectViewTargetFrameContext> TargetFrame
+        => CreateTargetFrame("default");
+
+    private static RenderFragment<FileObjectViewTargetFrameContext> CreateTargetFrame(string frameKey)
+        => context => builder =>
+        {
+            builder.OpenElement(0, "div");
+            builder.SetKey(frameKey);
+            builder.AddAttribute(1, "data-testid", "target-frame");
+            builder.AddAttribute(2, "data-kind", context.Kind.ToString());
+            builder.AddAttribute(3, "data-frame-key", frameKey);
+            builder.AddContent(4, context.TargetContent);
+            builder.CloseElement();
+        };
 
     private sealed class RecordingJsRuntime(IJSObjectReference module) : IJSRuntime
     {
