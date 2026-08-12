@@ -56,6 +56,7 @@ public sealed class DesktopFileLauncher : IDesktopFileLauncher
         ProcessStartInfo startInfo = CreateStartInfo(launchPath, request.ExecutablePath);
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!processStarter.Start(startInfo))
             {
                 return ValueTask.FromResult(DesktopFileLaunchResult.Failed(
@@ -113,10 +114,59 @@ public sealed class DesktopFileLauncher : IDesktopFileLauncher
     }
 
     private static bool IsSupportedInteractiveProcess()
-        => Environment.UserInteractive
-            && (OperatingSystem.IsWindows()
-                || OperatingSystem.IsLinux()
-                || OperatingSystem.IsMacOS());
+        => DesktopSessionAvailability.IsAvailable(
+            Environment.UserInteractive,
+            DesktopOperatingSystemExtensions.CaptureCurrent(),
+            Environment.GetEnvironmentVariable);
+}
+
+internal enum DesktopOperatingSystem
+{
+    Windows,
+    Linux,
+    MacOs,
+    Unsupported
+}
+
+internal static class DesktopOperatingSystemExtensions
+{
+    public static DesktopOperatingSystem CaptureCurrent()
+        => OperatingSystem.IsWindows()
+            ? DesktopOperatingSystem.Windows
+            : OperatingSystem.IsLinux()
+                ? DesktopOperatingSystem.Linux
+                : OperatingSystem.IsMacOS()
+                    ? DesktopOperatingSystem.MacOs
+                    : DesktopOperatingSystem.Unsupported;
+}
+
+internal static class DesktopSessionAvailability
+{
+    public static bool IsAvailable(
+        bool userInteractive,
+        DesktopOperatingSystem operatingSystem,
+        Func<string, string?> environmentVariableReader)
+    {
+        ArgumentNullException.ThrowIfNull(environmentVariableReader);
+        if (!userInteractive)
+        {
+            return false;
+        }
+
+        return operatingSystem switch
+        {
+            DesktopOperatingSystem.Windows => true,
+            DesktopOperatingSystem.Linux =>
+                HasValue(environmentVariableReader("DISPLAY")) ||
+                HasValue(environmentVariableReader("WAYLAND_DISPLAY")),
+            DesktopOperatingSystem.MacOs =>
+                HasValue(environmentVariableReader("TERM_PROGRAM")) ||
+                HasValue(environmentVariableReader("__CFBundleIdentifier")),
+            _ => false
+        };
+    }
+
+    private static bool HasValue(string? value) => !string.IsNullOrWhiteSpace(value);
 }
 
 internal interface IDesktopProcessStarter
