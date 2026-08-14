@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <AssemblyName>CanDoItAll.FileTools.FileInteraction.Spreadsheet</AssemblyName>
+    <RootNamespace>CanDoItAll.FileTools.FileInteraction.Spreadsheet</RootNamespace>
+    <Version>0.1.0</Version>
+    <PackageVersion>0.1.0</PackageVersion>
+    <IsPackable>true</IsPackable>
+    <Description>Optional bounded XLSX preview renderer for FileInteraction.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="ClosedXML" />
+    <ProjectReference Include="..\CanDoItAll.FileTools.Abstractions\CanDoItAll.FileTools.Abstractions.csproj" />
+    <ProjectReference Include="..\CanDoItAll.FileTools.FileInteraction.Core\CanDoItAll.FileTools.FileInteraction.Core.csproj" />
+    <ProjectReference Include="..\CanDoItAll.FileTools.FileInteraction.Components\CanDoItAll.FileTools.FileInteraction.Components.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,256 @@
+@implements IFileInteractionRendererComponent
+@implements IDisposable
+@inject ILogger<SpreadsheetFileView> Logger
+
+@if (previewUnavailable)
+{
+    <div class="cdi-ft-spreadsheet__state cdi-ft-spreadsheet__state--warning"
+         role="status"
+         data-testid="spreadsheet-preview-unavailable">
+        <strong>Workbook preview is unavailable.</strong>
+        <span>The workbook could not be opened inside the bounded, read-only preview.</span>
+    </div>
+}
+else if (preview is null)
+{
+    <div class="cdi-ft-spreadsheet__state" role="status">Loading workbook preview…</div>
+}
+else
+{
+    <section class="cdi-ft-spreadsheet" data-testid="spreadsheet-preview">
+        <header class="cdi-ft-spreadsheet__summary">
+            <span class="cdi-ft-spreadsheet__badge">@preview.TotalWorksheetCount.ToString("N0") worksheet(s)</span>
+            <span class="cdi-ft-spreadsheet__badge">Preview limit @MaximumPreviewRows rows × @MaximumPreviewColumns columns</span>
+            @if (preview.IsTruncated)
+            {
+                <span class="cdi-ft-spreadsheet__badge cdi-ft-spreadsheet__badge--warning">Bounded preview</span>
+            }
+        </header>
+
+        @if (ActiveWorksheet is { } worksheet)
+        {
+            <section class="cdi-ft-spreadsheet__worksheet"
+                     id="@PanelId(worksheet)"
+                     role="tabpanel"
+                     aria-labelledby="@TabId(worksheet)"
+                     tabindex="0"
+                     data-testid="spreadsheet-worksheet-panel">
+                <header class="cdi-ft-spreadsheet__worksheet-heading">
+                    <h3>@worksheet.Name</h3>
+                    <span class="cdi-ft-spreadsheet__badge">
+                        @(string.IsNullOrWhiteSpace(worksheet.UsedRangeAddress)
+                            ? "Empty worksheet"
+                            : worksheet.UsedRangeAddress)
+                    </span>
+                    <span class="cdi-ft-spreadsheet__badge">
+                        @worksheet.UsedRowCount.ToString("N0") rows × @worksheet.UsedColumnCount.ToString("N0") columns
+                    </span>
+                    @if (worksheet.IsTruncated)
+                    {
+                        <span class="cdi-ft-spreadsheet__badge cdi-ft-spreadsheet__badge--warning">Rows or columns truncated</span>
+                    }
+                    @if (HasTruncatedCells(worksheet))
+                    {
+                        <span class="cdi-ft-spreadsheet__badge cdi-ft-spreadsheet__badge--warning">Long cell text truncated</span>
+                    }
+                </header>
+
+                @if (worksheet.Values.Count == 0)
+                {
+                    <div class="cdi-ft-spreadsheet__empty" role="status">This worksheet has no populated cells.</div>
+                }
+                else
+                {
+                    <div class="cdi-ft-spreadsheet__grid-scroll" data-testid="spreadsheet-grid-scroll">
+                        <table class="cdi-ft-spreadsheet__grid" data-testid="spreadsheet-grid">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="cdi-ft-spreadsheet__row-heading">Row</th>
+                                    @for (var columnIndex = 0; columnIndex < ResolveColumnCount(worksheet); columnIndex++)
+                                    {
+                                        <th scope="col">@FormatColumnName(columnIndex)</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (var rowIndex = 0; rowIndex < worksheet.Values.Count; rowIndex++)
+                                {
+                                    IReadOnlyList<string> row = worksheet.Values[rowIndex];
+                                    <tr>
+                                        <th scope="row" class="cdi-ft-spreadsheet__row-heading">@(rowIndex + 1)</th>
+                                        @for (var columnIndex = 0; columnIndex < ResolveColumnCount(worksheet); columnIndex++)
+                                        {
+                                            <td>@ReadCell(row, columnIndex)</td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        }
+
+        <nav class="cdi-ft-spreadsheet__tabs"
+             role="tablist"
+             aria-label="Workbook worksheets"
+             data-testid="spreadsheet-worksheet-tabs">
+            @foreach (SpreadsheetWorksheetPreview tabWorksheet in preview.Worksheets)
+            {
+                bool isActive = tabWorksheet.Position == activeWorksheetPosition;
+                <button @key="tabWorksheet.Position"
+                        type="button"
+                        class="cdi-ft-spreadsheet__tab"
+                        id="@TabId(tabWorksheet)"
+                        role="tab"
+                        aria-selected="@(isActive ? "true" : "false")"
+                        aria-controls="@PanelId(tabWorksheet)"
+                        tabindex="0"
+                        data-testid="spreadsheet-worksheet-tab"
+                        @onclick="() => SelectWorksheet(tabWorksheet.Position)">
+                    @tabWorksheet.Name
+                </button>
+            }
+        </nav>
+    </section>
+}
+
+@code {
+    private const int MaximumPreviewWorksheets = 20;
+    private const int MaximumPreviewRows = 20;
+    private const int MaximumPreviewColumns = 12;
+    private const int MaximumDisplayedCellCharacters = 512;
+
+    private readonly SpreadsheetWorkbookPreviewReader reader = new();
+    private readonly string instanceId = $"spreadsheet-{Guid.NewGuid():N}";
+    private SpreadsheetPreviewIdentity? activeIdentity;
+    private SpreadsheetWorkbookPreview? preview;
+    private int? activeWorksheetPosition;
+    private bool previewUnavailable;
+    private CancellationTokenSource? previewCancellation;
+    private long previewGeneration;
+
+    [Parameter, EditorRequired]
+    public FileInteractionRenderContext Context { get; set; } = default!;
+
+    private SpreadsheetWorksheetPreview? ActiveWorksheet => preview?.Worksheets.FirstOrDefault(
+        worksheet => worksheet.Position == activeWorksheetPosition);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        string contentHash = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(Context.Content.Span));
+        var identity = new SpreadsheetPreviewIdentity(
+            Context.Request.FileName,
+            Context.Request.File.ToString() ?? string.Empty,
+            Context.Request.ContentRevision?.ToString() ?? string.Empty,
+            Context.EditRevision,
+            contentHash);
+        if (identity == activeIdentity)
+        {
+            return;
+        }
+
+        activeIdentity = identity;
+        preview = null;
+        activeWorksheetPosition = null;
+        previewUnavailable = false;
+        long generation = Interlocked.Increment(ref previewGeneration);
+        previewCancellation?.Cancel();
+        previewCancellation?.Dispose();
+        previewCancellation = new CancellationTokenSource();
+        CancellationToken cancellationToken = previewCancellation.Token;
+
+        try
+        {
+            SpreadsheetWorkbookPreview loadedPreview = await Task.Run(
+                () => reader.Read(new SpreadsheetWorkbookPreviewRequest(
+                    Context.Request.FileName,
+                    Context.Content,
+                    MaximumPreviewWorksheets,
+                    MaximumPreviewRows,
+                    MaximumPreviewColumns)),
+                cancellationToken);
+            if (generation == Volatile.Read(ref previewGeneration) && !cancellationToken.IsCancellationRequested)
+            {
+                preview = loadedPreview;
+                activeWorksheetPosition = loadedPreview.Worksheets.FirstOrDefault()?.Position;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (InvalidDataException exception)
+        {
+            if (generation != Volatile.Read(ref previewGeneration))
+            {
+                return;
+            }
+
+            previewUnavailable = true;
+            Logger.LogWarning(
+                "Workbook preview rejected for a {ContentLength} byte asset with {ExceptionType}.",
+                Context.Content.Length,
+                exception.GetType().Name);
+        }
+    }
+
+    private void SelectWorksheet(int position)
+    {
+        if (preview?.Worksheets.Any(worksheet => worksheet.Position == position) == true)
+        {
+            activeWorksheetPosition = position;
+        }
+    }
+
+    private string TabId(SpreadsheetWorksheetPreview worksheet)
+        => $"{instanceId}-tab-{worksheet.Position}";
+
+    private string PanelId(SpreadsheetWorksheetPreview worksheet)
+        => $"{instanceId}-panel-{worksheet.Position}";
+
+    private static int ResolveColumnCount(SpreadsheetWorksheetPreview worksheet)
+        => worksheet.Values.Count == 0 ? 0 : worksheet.Values.Max(row => row.Count);
+
+    private static string ReadCell(IReadOnlyList<string> row, int columnIndex)
+    {
+        if (columnIndex >= row.Count)
+        {
+            return string.Empty;
+        }
+
+        string value = row[columnIndex];
+        return value.Length <= MaximumDisplayedCellCharacters
+            ? value
+            : $"{value[..MaximumDisplayedCellCharacters]}…";
+    }
+
+    private static bool HasTruncatedCells(SpreadsheetWorksheetPreview worksheet)
+        => worksheet.Values.Any(row => row.Any(value => value.Length > MaximumDisplayedCellCharacters));
+
+    private static string FormatColumnName(int zeroBasedIndex)
+    {
+        var columnName = string.Empty;
+        for (var value = zeroBasedIndex + 1; value > 0; value = (value - 1) / 26)
+        {
+            columnName = (char)('A' + ((value - 1) % 26)) + columnName;
+        }
+
+        return columnName;
+    }
+
+    public void Dispose()
+    {
+        Interlocked.Increment(ref previewGeneration);
+        previewCancellation?.Cancel();
+        previewCancellation?.Dispose();
+        previewCancellation = null;
+    }
+
+    private sealed record SpreadsheetPreviewIdentity(
+        string FileName,
+        string FileReference,
+        string ContentRevision,
+        long EditRevision,
+        string ContentHash);
+}

@@ -74,5 +74,17 @@ function Get-FileToolsPackageManifest {
             PackageReferences = @('Markdig')
             IsRazorClassLibrary = $true
         }
+        [pscustomobject]@{
+            Id = 'CanDoItAll.FileTools.FileInteraction.Spreadsheet'
+            Project = 'src/CanDoItAll.FileTools.FileInteraction.Spreadsheet/CanDoItAll.FileTools.FileInteraction.Spreadsheet.csproj'
+            Assembly = 'CanDoItAll.FileTools.FileInteraction.Spreadsheet'
+            ProjectReferences = @(
+                'CanDoItAll.FileTools.Abstractions'
+                'CanDoItAll.FileTools.FileInteraction.Core'
+                'CanDoItAll.FileTools.FileInteraction.Components'
+            )
+            PackageReferences = @('ClosedXML')
+            IsRazorClassLibrary = $true
+        }
     )
 }

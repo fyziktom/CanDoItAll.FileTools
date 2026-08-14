@@ -8,6 +8,7 @@
     <Project Path="src/CanDoItAll.FileTools.FileInteraction.Core/CanDoItAll.FileTools.FileInteraction.Core.csproj" />
     <Project Path="src/CanDoItAll.FileTools.FileInteraction.Components/CanDoItAll.FileTools.FileInteraction.Components.csproj" />
     <Project Path="src/CanDoItAll.FileTools.FileInteraction.Markdown/CanDoItAll.FileTools.FileInteraction.Markdown.csproj" />
+    <Project Path="src/CanDoItAll.FileTools.FileInteraction.Spreadsheet/CanDoItAll.FileTools.FileInteraction.Spreadsheet.csproj" />
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/CanDoItAll.FileTools.Sandbox/CanDoItAll.FileTools.Sandbox.csproj" />
@@ -21,5 +22,6 @@
     <Project Path="tests/CanDoItAll.FileTools.FileInteraction.Core.Tests/CanDoItAll.FileTools.FileInteraction.Core.Tests.csproj" />
     <Project Path="tests/CanDoItAll.FileTools.FileInteraction.Components.Tests/CanDoItAll.FileTools.FileInteraction.Components.Tests.csproj" />
     <Project Path="tests/CanDoItAll.FileTools.FileInteraction.Markdown.Tests/CanDoItAll.FileTools.FileInteraction.Markdown.Tests.csproj" />
+    <Project Path="tests/CanDoItAll.FileTools.FileInteraction.Spreadsheet.Tests/CanDoItAll.FileTools.FileInteraction.Spreadsheet.Tests.csproj" />
   </Folder>
 </Solution>
