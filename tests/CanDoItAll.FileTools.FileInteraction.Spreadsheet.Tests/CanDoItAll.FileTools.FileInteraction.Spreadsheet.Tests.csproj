@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><IsPackable>false</IsPackable></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\BunitTestContext.cs" Link="BunitTestContext.cs" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="bunit" />
+    <PackageReference Include="coverlet.collector" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+    <ProjectReference Include="..\..\src\CanDoItAll.FileTools.FileInteraction.Spreadsheet\CanDoItAll.FileTools.FileInteraction.Spreadsheet.csproj" />
+  </ItemGroup>
+</Project>

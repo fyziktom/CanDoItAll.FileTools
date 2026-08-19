@@ -9,12 +9,13 @@ Abstractions
 |-- Providers.FileSystem
 `-- FileInteraction.Core
     `-- FileInteraction.Components
-        `-- FileInteraction.Markdown
+        |-- FileInteraction.Markdown
+        `-- FileInteraction.Spreadsheet
 
 Desktop
 ```
 
-`FileInteraction.Markdown` also references Abstractions and FileInteraction.Core directly. The diagram shows the intended direction, not every transitive edge.
+The optional renderer packages also reference Abstractions and FileInteraction.Core directly. The diagram shows the intended direction, not every transitive edge.
 
 ## Boundary rules
 
@@ -23,7 +24,7 @@ Desktop
 - Component packages are Razor class libraries over the corresponding core. They use the ASP.NET Core shared framework and isolated or collocated static assets.
 - Providers are leaf adapters into Abstractions. The included filesystem provider does not reference either UI package.
 - Desktop is an independent host-side adapter over the operating-system process boundary; UI packages consume it only through host callbacks.
-- Optional renderers extend the explicit `FileInteractionComponentBuilder`. Markdig is present only in the Markdown package.
+- Optional renderers extend the explicit `FileInteractionComponentBuilder`. Markdig is present only in the Markdown package, and ClosedXML only in the Spreadsheet package.
 - Samples and tests are composition/verification projects and are never package dependencies.
 
 ## Runtime ownership
@@ -39,7 +40,7 @@ The host also owns `IFileContentSource`, persistence, and authorization. FileInt
 ## Dependency policy enforcement
 
 `tools/validation/Test-NuGetPackages.ps1` verifies both project references and packed
-dependency metadata against the eight-project manifest. It supports independently
-versioned packages, rejects Components/main-application dependencies, confines Markdig to
-the Markdown adapter, checks package provenance and RCL assets, and requires assemblies
+dependency metadata against the nine-project manifest. It supports independently
+versioned packages, rejects Components/main-application dependencies, confines Markdig and
+ClosedXML to their optional adapters, checks package provenance and RCL assets, and requires assemblies
 plus XML documentation in every package.

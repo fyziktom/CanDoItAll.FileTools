@@ -129,8 +129,8 @@ function Assert-ProjectMetadata([pscustomobject]$Package) {
 
 . (Join-Path $repositoryRoot 'tools\deployment\nugets\Get-FileToolsPackageManifest.ps1')
 $packages = @(Get-FileToolsPackageManifest)
-if ($packages.Count -ne 8) {
-    throw "The validation manifest must contain exactly eight packages; found $($packages.Count)."
+if ($packages.Count -ne 9) {
+    throw "The validation manifest must contain exactly nine packages; found $($packages.Count)."
 }
 
 $duplicateIds = @($packages | Group-Object Id | Where-Object Count -gt 1)
@@ -438,6 +438,10 @@ foreach ($package in $packages) {
             if ($dependencyId -eq 'Markdig' -and $id -ne 'CanDoItAll.FileTools.FileInteraction.Markdown') {
                 throw "Only the Markdown package may depend on Markdig."
             }
+
+            if ($dependencyId -eq 'ClosedXML' -and $id -ne 'CanDoItAll.FileTools.FileInteraction.Spreadsheet') {
+                throw "Only the Spreadsheet package may depend on ClosedXML."
+            }
         }
 
         $hasAssetMetadata = $entryNames -ccontains 'build/Microsoft.AspNetCore.StaticWebAssets.props'
@@ -508,7 +512,7 @@ foreach ($package in $packages) {
 }
 
 if ($seenNupkgs.Count -ne $nupkgs.Count -or $seenSnupkgs.Count -ne $snupkgs.Count) {
-    throw "The package directory contains files that are not present in the eight-package manifest."
+    throw "The package directory contains files that are not present in the nine-package manifest."
 }
 
 $hashLines = @(

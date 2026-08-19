@@ -46,12 +46,38 @@ public sealed record DesktopFileLaunchRequest
     private static string ValidateAbsolutePath(string path, string parameterName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path, parameterName);
+        if (DesktopPhysicalPathSyntax.IsForeignOrAmbiguous(path))
+        {
+            throw new ArgumentException(
+                "The path uses syntax that is not valid for this host.",
+                parameterName);
+        }
+
         if (!Path.IsPathFullyQualified(path))
         {
             throw new ArgumentException("The path must be fully qualified.", parameterName);
         }
 
         return Path.GetFullPath(path);
+    }
+}
+
+internal static class DesktopPhysicalPathSyntax
+{
+    public static bool IsForeignOrAmbiguous(string path)
+    {
+        bool windowsDrive =
+            path.Length >= 2 &&
+            char.IsAsciiLetter(path[0]) &&
+            path[1] == ':';
+        bool windowsNetworkOrDevice =
+            path.StartsWith(@"\\", StringComparison.Ordinal) ||
+            path.StartsWith("//", StringComparison.Ordinal);
+        bool uri = path.Contains("://", StringComparison.Ordinal);
+
+        return OperatingSystem.IsWindows()
+            ? path.StartsWith("/", StringComparison.Ordinal) || uri
+            : windowsDrive || windowsNetworkOrDevice || uri;
     }
 }
 

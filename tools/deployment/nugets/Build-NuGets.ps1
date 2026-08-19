@@ -89,8 +89,8 @@ if ($solutions.Count -ne 1) {
 
 . (Join-Path $PSScriptRoot 'Get-FileToolsPackageManifest.ps1')
 $packages = @(Get-FileToolsPackageManifest)
-if ($packages.Count -ne 8) {
-    throw "The FileTools package manifest must contain exactly eight packages; found $($packages.Count)."
+if ($packages.Count -ne 9) {
+    throw "The FileTools package manifest must contain exactly nine packages; found $($packages.Count)."
 }
 
 $duplicateIds = @($packages | Group-Object Id | Where-Object Count -gt 1)

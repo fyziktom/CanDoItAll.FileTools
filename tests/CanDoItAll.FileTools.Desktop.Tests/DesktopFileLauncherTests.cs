@@ -25,6 +25,55 @@ public sealed class DesktopFileLauncherTests : IDisposable
     }
 
     [Fact]
+    public void Request_rejects_foreign_or_ambiguous_absolute_path_syntax()
+    {
+        string foreignPath = OperatingSystem.IsWindows()
+            ? "/var/tmp/report.txt"
+            : @"C:\foreign\report.txt";
+
+        Assert.Throws<ArgumentException>(() => new DesktopFileLaunchRequest(foreignPath));
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Throws<ArgumentException>(() => new DesktopFileLaunchRequest("//server/share/report.txt"));
+            Assert.Throws<ArgumentException>(() => new DesktopFileLaunchRequest(@"\\server\share\report.txt"));
+        }
+    }
+
+    [Theory]
+    [InlineData((int)DesktopOperatingSystem.Windows, true, null, null, null, null, true)]
+    [InlineData((int)DesktopOperatingSystem.Windows, false, null, null, null, null, false)]
+    [InlineData((int)DesktopOperatingSystem.Linux, true, ":0", null, null, null, true)]
+    [InlineData((int)DesktopOperatingSystem.Linux, true, null, "wayland-0", null, null, true)]
+    [InlineData((int)DesktopOperatingSystem.Linux, true, null, null, null, null, false)]
+    [InlineData((int)DesktopOperatingSystem.MacOs, true, null, null, "Apple_Terminal", null, true)]
+    [InlineData((int)DesktopOperatingSystem.MacOs, true, null, null, null, null, false)]
+    [InlineData((int)DesktopOperatingSystem.Unsupported, true, ":0", null, null, null, false)]
+    public void Desktop_session_availability_is_host_specific_and_fail_closed(
+        int operatingSystem,
+        bool userInteractive,
+        string? display,
+        string? waylandDisplay,
+        string? termProgram,
+        string? bundleIdentifier,
+        bool expected)
+    {
+        var environment = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["DISPLAY"] = display,
+            ["WAYLAND_DISPLAY"] = waylandDisplay,
+            ["TERM_PROGRAM"] = termProgram,
+            ["__CFBundleIdentifier"] = bundleIdentifier
+        };
+
+        bool available = DesktopSessionAvailability.IsAvailable(
+            userInteractive,
+            (DesktopOperatingSystem)operatingSystem,
+            name => environment[name]);
+
+        Assert.Equal(expected, available);
+    }
+
+    [Fact]
     public async Task MissingTarget_ReturnsTypedFailureWithoutStartingProcess()
     {
         var starter = new RecordingProcessStarter();
@@ -51,6 +100,45 @@ public sealed class DesktopFileLauncherTests : IDisposable
         Assert.False(launcher.IsAvailable);
         Assert.False(result.Succeeded);
         Assert.Equal(DesktopFileLaunchFailureCode.DesktopUnavailable, result.Failure?.Code);
+        Assert.Empty(starter.Starts);
+    }
+
+    [Fact]
+    public async Task Cancellation_before_desktop_delegation_does_not_start_a_process()
+    {
+        string target = CreateFile("quarterly report.xlsx");
+        var starter = new RecordingProcessStarter();
+        DesktopFileLauncher launcher = CreateAvailableLauncher(starter);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await launcher.LaunchAsync(
+                new DesktopFileLaunchRequest(target),
+                cancellation.Token));
+
+        Assert.Empty(starter.Starts);
+    }
+
+    [Fact]
+    public async Task Cancellation_during_availability_preflight_does_not_start_a_process()
+    {
+        string target = CreateFile("quarterly report.xlsx");
+        var starter = new RecordingProcessStarter();
+        using var cancellation = new CancellationTokenSource();
+        var launcher = new DesktopFileLauncher(
+            starter,
+            () =>
+            {
+                cancellation.Cancel();
+                return true;
+            });
+
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await launcher.LaunchAsync(
+                new DesktopFileLaunchRequest(target),
+                cancellation.Token));
+
         Assert.Empty(starter.Starts);
     }
 

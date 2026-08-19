@@ -25,7 +25,7 @@ dotnet build .\samples\CanDoItAll.FileTools.Sandbox\CanDoItAll.FileTools.Sandbox
 dotnet run --project .\samples\CanDoItAll.FileTools.Sandbox\CanDoItAll.FileTools.Sandbox.csproj -c Release --no-build
 ```
 
-## Pack all eight libraries
+## Pack all nine libraries
 
 After a Release build, create packages without rebuilding:
 
@@ -74,6 +74,7 @@ Validation requires:
 - the approved project-reference and packed dependency graph;
 - no CanDoItAll.Components or main-application dependency;
 - Markdig only in `CanDoItAll.FileTools.FileInteraction.Markdown`;
+- ClosedXML only in `CanDoItAll.FileTools.FileInteraction.Spreadsheet`;
 - static-web-asset build metadata and at least one asset for each Razor class library;
 - SHA-256 for every package and symbol package.
 
