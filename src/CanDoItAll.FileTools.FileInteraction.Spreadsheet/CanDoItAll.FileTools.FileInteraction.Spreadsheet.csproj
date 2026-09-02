@@ -2,8 +2,6 @@
   <PropertyGroup>
     <AssemblyName>CanDoItAll.FileTools.FileInteraction.Spreadsheet</AssemblyName>
     <RootNamespace>CanDoItAll.FileTools.FileInteraction.Spreadsheet</RootNamespace>
-    <Version>0.1.0</Version>
-    <PackageVersion>0.1.0</PackageVersion>
     <IsPackable>true</IsPackable>
     <Description>Optional bounded XLSX preview renderer for FileInteraction.</Description>
   </PropertyGroup>
