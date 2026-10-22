@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    @if (SandboxComponentsSupport.HeadAssetsComponentType is { } componentsHeadAssets)
+    {
+        <DynamicComponent Type="componentsHeadAssets" />
+    }
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["CanDoItAll.FileTools.Sandbox.styles.css"]" />
     <HeadOutlet />

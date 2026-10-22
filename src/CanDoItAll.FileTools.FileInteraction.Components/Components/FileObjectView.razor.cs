@@ -34,6 +34,30 @@ public sealed class FileObjectViewTargetFrameContext
     public RenderFragment TargetContent { get; }
 }
 
+/// <summary>
+/// Zoom and pan behavior applied by <see cref="FileObjectView"/> to image and sandboxed browser targets through the
+/// built-in <see cref="FileZoomPanFrame"/>. Zoom values are relative to the fitted view.
+/// </summary>
+public sealed record FileObjectViewZoomPanOptions
+{
+    /// <summary>Wheel zoom, keyboard and pointer panning, and the toolbar with the default zoom range.</summary>
+    public static FileObjectViewZoomPanOptions Default { get; } = new();
+
+    public bool Enabled { get; init; } = true;
+
+    public bool ShowControls { get; init; } = true;
+
+    public FileZoomPanWheelMode WheelMode { get; init; } = FileZoomPanWheelMode.Zoom;
+
+    public double MinimumZoom { get; init; } = 0.25;
+
+    public double MaximumZoom { get; init; } = 8;
+
+    public double ZoomFactor { get; init; } = 1.2;
+
+    public double KeyboardPanStep { get; init; } = 48;
+}
+
 internal readonly record struct FileObjectContentStamp(
     FileReference File,
     long EditRevision,

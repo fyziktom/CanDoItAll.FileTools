@@ -1,0 +1,10 @@
+@implements IFileInteractionRendererComponent
+
+<FileObjectView Context="Context"
+                Kind="FileObjectViewKind.Browser"
+                ZoomPan="FileObjectViewZoomPanOptions.Default" />
+
+@code {
+    [Parameter, EditorRequired]
+    public FileInteractionRenderContext Context { get; set; } = default!;
+}

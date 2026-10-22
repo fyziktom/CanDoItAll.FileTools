@@ -167,7 +167,8 @@
 .cdi-ft-interaction__pane {
     min-inline-size: 0;
     min-block-size: 0;
-    overflow: hidden;
+    overflow: auto;
+    overscroll-behavior: contain;
 }
 
 .cdi-ft-interaction__preview {

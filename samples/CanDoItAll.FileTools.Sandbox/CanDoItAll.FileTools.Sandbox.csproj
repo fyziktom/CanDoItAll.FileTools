@@ -4,11 +4,41 @@
     <RootNamespace>CanDoItAll.FileTools.Sandbox</RootNamespace>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
+
+  <!--
+    The sandbox proves FileInteraction renderers beside the real CanDoItAll.Components Mermaid wrapper.
+    The sibling repository checkout is consumed as direct project references (never as NuGet packages)
+    when it exists next to this repository or at an explicit CanDoItAllComponentsRoot. Without it the
+    sandbox still builds and renders the inert Mermaid seam. Shipping FileTools packages never reference it.
+  -->
+  <PropertyGroup>
+    <CanDoItAllComponentsRoot Condition="'$(CanDoItAllComponentsRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', 'CanDoItAll.Components'))</CanDoItAllComponentsRoot>
+    <CanDoItAllComponentsBaseLibProject>$([MSBuild]::NormalizePath('$(CanDoItAllComponentsRoot)', 'src', 'CanDoItAll.Components.BaseLib', 'CanDoItAll.Components.BaseLib.csproj'))</CanDoItAllComponentsBaseLibProject>
+    <CanDoItAllComponentsMermaidProject>$([MSBuild]::NormalizePath('$(CanDoItAllComponentsRoot)', 'src', 'CanDoItAll.Components.Mermaid', 'CanDoItAll.Components.Mermaid.csproj'))</CanDoItAllComponentsMermaidProject>
+    <SandboxUsesCanDoItAllComponents Condition="'$(SandboxUsesCanDoItAllComponents)' == '' and Exists('$(CanDoItAllComponentsBaseLibProject)') and Exists('$(CanDoItAllComponentsMermaidProject)')">true</SandboxUsesCanDoItAllComponents>
+    <SandboxUsesCanDoItAllComponents Condition="'$(SandboxUsesCanDoItAllComponents)' != 'true'">false</SandboxUsesCanDoItAllComponents>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(SandboxUsesCanDoItAllComponents)' == 'true'">
+    <DefineConstants>$(DefineConstants);CANDOITALL_COMPONENTS</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\CanDoItAll.FileTools.FileBrowser.Core\CanDoItAll.FileTools.FileBrowser.Core.csproj" />
     <ProjectReference Include="..\..\src\CanDoItAll.FileTools.FileBrowser.Components\CanDoItAll.FileTools.FileBrowser.Components.csproj" />
     <ProjectReference Include="..\..\src\CanDoItAll.FileTools.FileInteraction.Components\CanDoItAll.FileTools.FileInteraction.Components.csproj" />
     <ProjectReference Include="..\..\src\CanDoItAll.FileTools.FileInteraction.Markdown\CanDoItAll.FileTools.FileInteraction.Markdown.csproj" />
     <ProjectReference Include="..\..\src\CanDoItAll.FileTools.Providers.FileSystem\CanDoItAll.FileTools.Providers.FileSystem.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(SandboxUsesCanDoItAllComponents)' == 'true'">
+    <ProjectReference Include="$(CanDoItAllComponentsBaseLibProject)" />
+    <ProjectReference Include="$(CanDoItAllComponentsMermaidProject)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(SandboxUsesCanDoItAllComponents)' != 'true'">
+    <RazorComponent Remove="Components\ComponentsIntegration\**\*.razor" />
+    <Compile Remove="Components\ComponentsIntegration\**\*.cs" />
+    <Content Remove="Components\ComponentsIntegration\**" />
   </ItemGroup>
 </Project>

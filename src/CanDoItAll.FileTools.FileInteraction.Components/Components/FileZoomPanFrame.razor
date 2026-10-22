@@ -1,0 +1,249 @@
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div @attributes="AdditionalAttributes"
+     class="@RootClass"
+     style="@Style"
+     data-testid="interaction-zoom-pan">
+    @if (ShowControls && Enabled)
+    {
+        <div class="cdi-ft-zoom-pan__toolbar" role="toolbar" aria-label="Zoom and pan controls">
+            <button type="button"
+                    class="cdi-ft-zoom-pan__tool"
+                    title="Zoom out"
+                    aria-label="Zoom out"
+                    data-testid="interaction-zoom-out"
+                    @onclick="ZoomOutAsync">&minus;</button>
+            <output class="cdi-ft-zoom-pan__readout"
+                    aria-live="polite"
+                    aria-label="Zoom level"
+                    data-cdi-ft-zoom-readout
+                    data-testid="interaction-zoom-readout">100%</output>
+            <button type="button"
+                    class="cdi-ft-zoom-pan__tool"
+                    title="Zoom in"
+                    aria-label="Zoom in"
+                    data-testid="interaction-zoom-in"
+                    @onclick="ZoomInAsync">+</button>
+            <button type="button"
+                    class="cdi-ft-zoom-pan__tool cdi-ft-zoom-pan__tool--reset"
+                    title="Reset zoom and position"
+                    aria-label="Reset zoom and position"
+                    data-testid="interaction-zoom-reset"
+                    @onclick="ResetAsync">Reset</button>
+        </div>
+    }
+
+    <div @ref="viewport"
+         class="cdi-ft-zoom-pan__viewport"
+         tabindex="@(Enabled ? "0" : null)"
+         role="group"
+         aria-label="@ResolvedAriaLabel"
+         data-testid="interaction-zoom-pan-viewport"
+         data-cdi-ft-zoom-pan-viewport>
+        <div @ref="content"
+             class="cdi-ft-zoom-pan__content"
+             inert="@SuppressContentInteraction"
+             data-testid="interaction-zoom-pan-content">
+            @ChildContent
+        </div>
+    </div>
+</div>
+
+@code {
+    private ElementReference viewport;
+    private ElementReference content;
+    private FileZoomPanFrameInterop? interop;
+    private FileZoomPanFrameOptions? appliedOptions;
+    private object? previousResetKey;
+    private bool hasResetKey;
+    private bool resetRequested;
+    private bool interopUnavailable;
+    private bool disposed;
+
+    /// <summary>The zoomable and pannable content. Its root element should fill the content plane.</summary>
+    [Parameter, EditorRequired]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    /// <summary>When <c>false</c>, the content is shown fitted and centered without zoom or pan interaction.</summary>
+    [Parameter]
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>Shows the zoom out, zoom level, zoom in, and reset toolbar while <see cref="Enabled"/>.</summary>
+    [Parameter]
+    public bool ShowControls { get; set; } = true;
+
+    /// <summary>
+    /// Makes the content plane inert so pointer input reaches the frame instead of embedded documents or links.
+    /// Required for sandboxed frames; leave <c>false</c> for content that must remain interactive.
+    /// </summary>
+    [Parameter]
+    public bool SuppressContentInteraction { get; set; }
+
+    /// <summary>What an unmodified mouse wheel does over the frame.</summary>
+    [Parameter]
+    public FileZoomPanWheelMode WheelMode { get; set; } = FileZoomPanWheelMode.Zoom;
+
+    /// <summary>The smallest zoom relative to the fitted view; must be in (0, 1].</summary>
+    [Parameter]
+    public double MinimumZoom { get; set; } = 0.25;
+
+    /// <summary>The largest zoom relative to the fitted view; must be at least 1 and at least <see cref="MinimumZoom"/>.</summary>
+    [Parameter]
+    public double MaximumZoom { get; set; } = 8;
+
+    /// <summary>The multiplier applied per zoom step (toolbar button, key, or wheel notch).</summary>
+    [Parameter]
+    public double ZoomFactor { get; set; } = 1.2;
+
+    /// <summary>Pixels panned per arrow-key press.</summary>
+    [Parameter]
+    public double KeyboardPanStep { get; set; } = 48;
+
+    /// <summary>Accessible label for the viewport; defaults to "Zoomable and pannable content".</summary>
+    [Parameter]
+    public string? AriaLabel { get; set; }
+
+    /// <summary>When this value changes (by value equality), the zoom and pan state returns to the fitted view.</summary>
+    [Parameter]
+    public object? ResetKey { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public string? Style { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string RootClass => string.Join(
+        ' ',
+        new[]
+        {
+            "cdi-ft-zoom-pan",
+            ShowControls && Enabled ? "cdi-ft-zoom-pan--controls" : null,
+            Enabled ? "cdi-ft-zoom-pan--enabled" : null,
+            SuppressContentInteraction ? "cdi-ft-zoom-pan--suppressed" : null,
+            string.IsNullOrWhiteSpace(Class) ? null : Class.Trim()
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private string ResolvedAriaLabel => string.IsNullOrWhiteSpace(AriaLabel)
+        ? "Zoomable and pannable content"
+        : AriaLabel.Trim();
+
+    private bool CanInvoke
+        => Enabled && interop is not null && appliedOptions is not null && !disposed && !interopUnavailable;
+
+    protected override void OnParametersSet()
+    {
+        FileZoomPanFrameOptions.Validate(WheelMode, MinimumZoom, MaximumZoom, ZoomFactor, KeyboardPanStep);
+        if (!hasResetKey)
+        {
+            previousResetKey = ResetKey;
+            hasResetKey = true;
+            return;
+        }
+
+        if (!Equals(previousResetKey, ResetKey))
+        {
+            previousResetKey = ResetKey;
+            resetRequested = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (disposed || interopUnavailable)
+        {
+            return;
+        }
+
+        var options = CurrentOptions();
+        try
+        {
+            if (interop is null)
+            {
+                interop = new FileZoomPanFrameInterop(JS);
+                await interop.InitializeAsync(viewport, content, options.ToInterop());
+                appliedOptions = options;
+                resetRequested = false;
+                return;
+            }
+
+            if (appliedOptions != options)
+            {
+                await interop.ConfigureAsync(viewport, options.ToInterop());
+                appliedOptions = options;
+            }
+
+            if (resetRequested)
+            {
+                resetRequested = false;
+                await interop.ResetAsync(viewport);
+            }
+        }
+        catch (Exception exception) when (FileZoomPanFrameInterop.IsExpectedFailure(exception))
+        {
+            interopUnavailable = exception is not JSDisconnectedException;
+        }
+    }
+
+    /// <summary>Zooms in by one <see cref="ZoomFactor"/> step around the viewport center.</summary>
+    public Task ZoomInAsync() => ZoomByAsync(ZoomFactor);
+
+    /// <summary>Zooms out by one <see cref="ZoomFactor"/> step around the viewport center.</summary>
+    public Task ZoomOutAsync() => ZoomByAsync(1 / ZoomFactor);
+
+    /// <summary>Returns to the fitted, centered view.</summary>
+    public async Task ResetAsync()
+    {
+        if (!CanInvoke)
+        {
+            return;
+        }
+
+        try
+        {
+            await interop!.ResetAsync(viewport);
+        }
+        catch (Exception exception) when (FileZoomPanFrameInterop.IsExpectedFailure(exception))
+        {
+        }
+    }
+
+    private async Task ZoomByAsync(double factor)
+    {
+        if (!CanInvoke)
+        {
+            return;
+        }
+
+        try
+        {
+            await interop!.ZoomByAsync(viewport, factor);
+        }
+        catch (Exception exception) when (FileZoomPanFrameInterop.IsExpectedFailure(exception))
+        {
+        }
+    }
+
+    private FileZoomPanFrameOptions CurrentOptions()
+        => new(
+            Enabled,
+            SuppressContentInteraction,
+            WheelMode,
+            MinimumZoom,
+            MaximumZoom,
+            ZoomFactor,
+            KeyboardPanStep);
+
+    public async ValueTask DisposeAsync()
+    {
+        disposed = true;
+        if (interop is not null)
+        {
+            await interop.DisposeAsync(viewport);
+        }
+    }
+}

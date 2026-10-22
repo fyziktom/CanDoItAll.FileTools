@@ -67,7 +67,7 @@ public static class FileInteractionBuiltIns
                 typeof(ImageFileView), FileInteractionContentKind.Binary))
             .AddRenderer(new FileInteractionRendererDescriptor(
                 "base-svg-inert-view", FileInteractionBuiltInProfileIds.Svg, FileInteractionMode.View,
-                typeof(ObjectFileView), FileInteractionContentKind.Binary))
+                typeof(SvgFileView), FileInteractionContentKind.Binary))
             .AddRenderer(new FileInteractionRendererDescriptor(
                 "base-pdf-view", FileInteractionBuiltInProfileIds.Pdf, FileInteractionMode.View,
                 typeof(PdfFileView), FileInteractionContentKind.Binary))

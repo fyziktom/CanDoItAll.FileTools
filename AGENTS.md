@@ -25,7 +25,8 @@ developer profile or repositories directory.
 - Restore: `dotnet restore .\CanDoItAll.FileTools.slnx --configfile .\NuGet.config`
 - Build: `dotnet build .\CanDoItAll.FileTools.slnx --configuration Release --no-restore`
 - Test: `dotnet test .\CanDoItAll.FileTools.slnx --configuration Release --no-build --no-restore`
-- Validate formatting: `dotnet format .\CanDoItAll.FileTools.slnx --verify-no-changes --no-restore`
+- Validate formatting: `dotnet format .\CanDoItAll.FileTools.slnx --verify-no-changes --no-restore --exclude ..\CanDoItAll.Components\`
+  (the exclusion keeps the read-only sibling Components projects, which the Sandbox references directly, out of this repository's format gate)
 - Build packages: `.\tools\deployment\nugets\Build-NuGets.ps1`
 - Validate packages: `.\tools\validation\Test-NuGetPackages.ps1`
 
