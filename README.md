@@ -30,7 +30,7 @@ browser behavior, or application deployment. Hosts retain those responsibilities
 | Responsive Blazor browser in Standard, Compact, or Minimal mode | `CanDoItAll.FileTools.FileBrowser.Components` | Abstractions, FileBrowser.Core, ASP.NET Core shared framework |
 | Root-confined local folder browsing plus Browser and Interaction range reads | `CanDoItAll.FileTools.Providers.FileSystem` | Abstractions |
 | Profile resolution, save/autosave, preview, and bounded edit history | `CanDoItAll.FileTools.FileInteraction.Core` | Abstractions |
-| Blazor interaction shell plus text, raster-image, browser-native PDF, sandboxed SVG, and sandboxed fallback renderers | `CanDoItAll.FileTools.FileInteraction.Components` | Abstractions, FileInteraction.Core, ASP.NET Core shared framework |
+| Blazor interaction shell plus text, raster-image, browser-native PDF/media, sandboxed SVG, and configurable metadata or browser fallback renderers | `CanDoItAll.FileTools.FileInteraction.Components` | Abstractions, FileInteraction.Core, ASP.NET Core shared framework |
 | Optional Markdown view/edit/preview renderer | `CanDoItAll.FileTools.FileInteraction.Markdown` | Abstractions, FileInteraction.Core, FileInteraction.Components, Markdig, ASP.NET Core shared framework |
 | Optional bounded XLSX worksheet viewer | `CanDoItAll.FileTools.FileInteraction.Spreadsheet` | Abstractions, FileInteraction.Core, FileInteraction.Components, ClosedXML, ASP.NET Core shared framework |
 

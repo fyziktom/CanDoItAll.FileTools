@@ -10,8 +10,14 @@ export function applyObjectUrl(element, bytes, mediaType, attributeName) {
 export function revokeObjectUrl(element) {
     const entry = objectUrls.get(element);
     if (entry) {
+        if (element instanceof HTMLMediaElement) {
+            element.pause();
+        }
         if (element.getAttribute(entry.attributeName) === entry.url) {
             element.removeAttribute(entry.attributeName);
+            if (element instanceof HTMLMediaElement) {
+                element.load();
+            }
         }
 
         URL.revokeObjectURL(entry.url);
