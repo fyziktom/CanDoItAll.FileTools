@@ -16,7 +16,9 @@ public enum FileObjectViewKind
     /// Gives the browser a bounded blob URL inside a fully sandboxed frame. Rendering support remains
     /// browser- and codec-dependent, while file content stays isolated from the host document.
     /// </summary>
-    Browser
+    Browser,
+    Audio,
+    Video
 }
 
 public sealed class FileObjectViewTargetFrameContext

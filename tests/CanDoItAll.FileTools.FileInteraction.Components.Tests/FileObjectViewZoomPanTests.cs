@@ -120,19 +120,23 @@ public sealed class FileObjectViewZoomPanTests : FileToolsBunitContext
         Assert.Empty(cut.FindAll("[role='toolbar']"));
     }
 
-    [Fact]
-    public void ZoomPan_IsIgnoredForTheBrowserNativePdfViewer()
+    [Theory]
+    [InlineData(FileObjectViewKind.Pdf, "brief.pdf", "application/pdf", "interaction-pdf-view", "object")]
+    [InlineData(FileObjectViewKind.Audio, "clip.mp3", "audio/mpeg", "interaction-audio-view", "audio")]
+    [InlineData(FileObjectViewKind.Video, "clip.mp4", "video/mp4", "interaction-video-view", "video")]
+    public void ZoomPan_IsIgnoredForBrowserNativeControls(
+        FileObjectViewKind kind, string fileName, string mediaType, string testId, string element)
     {
         SetupModules();
 
         var cut = Render<FileObjectView>(parameters => parameters
-            .Add(component => component.Context, CreateContext("brief.pdf", "application/pdf", [1]))
-            .Add(component => component.Kind, FileObjectViewKind.Pdf)
+            .Add(component => component.Context, CreateContext(fileName, mediaType, [1]))
+            .Add(component => component.Kind, kind)
             .Add(component => component.ZoomPan, FileObjectViewZoomPanOptions.Default));
 
         Assert.Empty(cut.FindComponents<FileZoomPanFrame>());
-        Assert.NotNull(cut.Find("[data-testid='interaction-pdf-view'] > object"));
-        Assert.DoesNotContain("cdi-ft-object-surface--zoom-pan", cut.Find("[data-testid='interaction-pdf-view']").ClassName);
+        Assert.NotNull(cut.Find($"[data-testid='{testId}'] > {element}"));
+        Assert.DoesNotContain("cdi-ft-object-surface--zoom-pan", cut.Find($"[data-testid='{testId}']").ClassName);
     }
 
     [Fact]
