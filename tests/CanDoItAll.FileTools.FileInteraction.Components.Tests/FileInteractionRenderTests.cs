@@ -12,7 +12,8 @@ namespace CanDoItAll.FileTools.FileInteraction.Components.Tests;
 public sealed class FileInteractionRenderTests
 {
     [Fact]
-    public async Task Render_OptInMetadataFallbackEncodesNamesWithoutReadingPayload() {
+    public async Task Render_OptInMetadataFallbackEncodesNamesWithoutReadingPayload()
+    {
         await using var renderer = new InteractionHtmlRenderer();
         var source = new DelegateContentSource((_, _) => ValueTask.FromResult(
             new FileContentLease(new PayloadReadForbiddenStream(), "application/zip", 128)));
@@ -349,7 +350,8 @@ public sealed class FileInteractionRenderTests
                 bytes.Length));
         });
 
-    private sealed class PayloadReadForbiddenStream : MemoryStream {
+    private sealed class PayloadReadForbiddenStream : MemoryStream
+    {
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
             => throw new InvalidOperationException("Metadata preview must not read payload bytes.");
     }

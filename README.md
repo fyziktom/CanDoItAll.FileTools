@@ -30,7 +30,7 @@ browser behavior, or application deployment. Hosts retain those responsibilities
 | Responsive Blazor browser in Standard, Compact, or Minimal mode | `CanDoItAll.FileTools.FileBrowser.Components` | Abstractions, FileBrowser.Core, ASP.NET Core shared framework |
 | Root-confined local folder browsing plus Browser and Interaction range reads | `CanDoItAll.FileTools.Providers.FileSystem` | Abstractions |
 | Profile resolution, save/autosave, preview, and bounded edit history | `CanDoItAll.FileTools.FileInteraction.Core` | Abstractions |
-| Blazor interaction shell plus text, raster-image, browser-native PDF/media, sandboxed SVG, and configurable metadata or browser fallback renderers | `CanDoItAll.FileTools.FileInteraction.Components` | Abstractions, FileInteraction.Core, ASP.NET Core shared framework |
+| Blazor interaction shell and zoom/pan frame plus text, raster-image, browser-native PDF/media, sandboxed SVG, and configurable metadata or browser fallback renderers | `CanDoItAll.FileTools.FileInteraction.Components` | Abstractions, FileInteraction.Core, ASP.NET Core shared framework |
 | Optional Markdown view/edit/preview renderer | `CanDoItAll.FileTools.FileInteraction.Markdown` | Abstractions, FileInteraction.Core, FileInteraction.Components, Markdig, ASP.NET Core shared framework |
 | Optional bounded XLSX worksheet viewer | `CanDoItAll.FileTools.FileInteraction.Spreadsheet` | Abstractions, FileInteraction.Core, FileInteraction.Components, ClosedXML, ASP.NET Core shared framework |
 
@@ -138,7 +138,7 @@ FileBrowser ownership moved from `CanDoItAll.Components` to this standalone repo
 | `CanDoItAll.Components.FileBrowser.BaseLib` | `CanDoItAll.FileTools.FileBrowser.Components` |
 | `CanDoItAll.Components.FileBrowser.Providers.FileSystem` | `CanDoItAll.FileTools.Providers.FileSystem` |
 
-The new browser RCL does not depend on Components.BaseLib. Do not load the former global FileBrowser stylesheet or old `_content/CanDoItAll.Components.FileBrowser.BaseLib/...` paths; the new RCL uses isolated/collocated assets. `CanDoItAll.Components` continues to own simple general-purpose wrappers such as Mermaid, which hosts may register through the FileInteraction renderer seam.
+The new browser RCL does not depend on Components.BaseLib. Do not load the former global FileBrowser stylesheet or old `_content/CanDoItAll.Components.FileBrowser.BaseLib/...` paths; the new RCL uses isolated/collocated assets. `CanDoItAll.Components` continues to own simple general-purpose wrappers such as Mermaid, which hosts may register through the FileInteraction renderer seam; the Sandbox demonstrates that wrapper inside the FileTools `FileZoomPanFrame` through a direct sibling project reference, never through a package dependency.
 
 ## Packaging
 
@@ -163,7 +163,7 @@ for `-NoRestore`, `-NoBuild`, version overrides, and CI usage.
 - [Host integration and security](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/docs/host-integration-security.md)
 - [Build, test, pack, and validate](https://github.com/fyziktom/CanDoItAll.FileTools/blob/main/docs/build-and-packaging.md)
 
-The Sandbox under `samples/CanDoItAll.FileTools.Sandbox` demonstrates composed UI scenarios. The separate integration architecture bundle is prepared for future CanDoItAll work; none of that future host-module wiring is claimed as shipped by these packages.
+The Sandbox under `samples/CanDoItAll.FileTools.Sandbox` demonstrates composed UI scenarios, including image, SVG, and Mermaid zoom and pan surfaces. The separate integration architecture bundle is prepared for future CanDoItAll work; none of that future host-module wiring is claimed as shipped by these packages.
 
 ## License and contributions
 

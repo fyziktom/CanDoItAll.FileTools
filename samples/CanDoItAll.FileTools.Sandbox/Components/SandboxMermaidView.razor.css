@@ -2,12 +2,71 @@
     display: grid;
     height: 100%;
     min-height: 0;
+    color: #262724;
+    background: #f8f7f3;
+}
+
+.sandbox-mermaid--seam {
     overflow: auto;
     padding: 1rem;
     gap: 1rem;
     align-content: start;
-    color: #262724;
-    background: #f8f7f3;
+}
+
+.sandbox-mermaid--components {
+    grid-template-rows: minmax(0, 1fr) auto;
+    overflow: hidden;
+}
+
+.sandbox-mermaid--components ::deep .cdi-ft-zoom-pan {
+    --cdi-ft-zoom-pan-background: #fff;
+    min-block-size: 0;
+}
+
+.sandbox-mermaid--components ::deep .cda-mermaid {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0;
+    block-size: 100%;
+    min-block-size: 0;
+}
+
+.sandbox-mermaid--components ::deep .cda-mermaid__viewport-shell {
+    block-size: 100%;
+    min-block-size: 0;
+}
+
+.sandbox-mermaid--components ::deep .cda-zoom-pan-frame {
+    min-block-size: 0;
+}
+
+.sandbox-mermaid--components ::deep .cda-zoom-pan-frame__viewport {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.sandbox-mermaid__status {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: .5rem;
+    padding: .35rem .7rem;
+    color: #68655f;
+    border-top: 1px solid #d7d3c8;
+    background: #f1efe9;
+    font: .62rem "SFMono-Regular", Consolas, monospace;
+}
+
+.sandbox-mermaid__status strong {
+    flex: 0 0 auto;
+    color: #285aa8;
+}
+
+.sandbox-mermaid__status span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .sandbox-mermaid__diagram {
@@ -60,7 +119,7 @@
 }
 
 @media (max-width: 34rem) {
-    .sandbox-mermaid {
+    .sandbox-mermaid--seam {
         padding: .65rem;
     }
 

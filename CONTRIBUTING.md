@@ -29,8 +29,12 @@ Run the main gate:
 dotnet restore .\CanDoItAll.FileTools.slnx --configfile .\NuGet.config
 dotnet build .\CanDoItAll.FileTools.slnx --configuration Release --no-restore -warnaserror
 dotnet test .\CanDoItAll.FileTools.slnx --configuration Release --no-build --no-restore
-dotnet format .\CanDoItAll.FileTools.slnx --verify-no-changes --no-restore
+dotnet format .\CanDoItAll.FileTools.slnx --verify-no-changes --no-restore --exclude ..\CanDoItAll.Components\
 ```
+
+The `--exclude` keeps the sibling `CanDoItAll.Components` projects, which the Sandbox references
+directly when that checkout exists, out of this repository's format gate; it is harmless when the
+sibling is absent.
 
 For package or metadata changes, also run:
 

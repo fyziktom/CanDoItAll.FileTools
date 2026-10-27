@@ -79,7 +79,7 @@ public static class FileInteractionBuiltIns
                 typeof(ImageFileView), FileInteractionContentKind.Binary))
             .AddRenderer(new FileInteractionRendererDescriptor(
                 "base-svg-inert-view", FileInteractionBuiltInProfileIds.Svg, FileInteractionMode.View,
-                typeof(ObjectFileView), FileInteractionContentKind.Binary))
+                typeof(SvgFileView), FileInteractionContentKind.Binary))
             .AddRenderer(new FileInteractionRendererDescriptor(
                 "base-pdf-view", FileInteractionBuiltInProfileIds.Pdf, FileInteractionMode.View,
                 typeof(PdfFileView), FileInteractionContentKind.Binary))
@@ -96,7 +96,8 @@ public static class FileInteractionBuiltIns
         return builder;
     }
 
-    public static FileInteractionComponentBuilder AddMetadataFallback(this FileInteractionComponentBuilder builder) {
+    public static FileInteractionComponentBuilder AddMetadataFallback(this FileInteractionComponentBuilder builder)
+    {
         ArgumentNullException.ThrowIfNull(builder);
         return builder.AddRenderer(new FileInteractionRendererDescriptor(
             "base-object-metadata-view", FileInteractionBuiltInProfileIds.Object, FileInteractionMode.View,

@@ -11,7 +11,8 @@ public sealed class FileObjectUrlInteropTests : FileToolsBunitContext
     [InlineData(FileObjectViewKind.Audio, "audio/wav", "audio")]
     [InlineData(FileObjectViewKind.Video, "video/mp4", "video")]
     public async Task NativeMedia_LoadErrorAndReplacementKeepControlsAndOwnedUrlLifetime(
-        FileObjectViewKind kind, string mediaType, string target) {
+        FileObjectViewKind kind, string mediaType, string target)
+    {
         var module = JSInterop.SetupModule(FileObjectUrlInterop.ModulePath);
         var apply = module.SetupVoid(FileObjectUrlInterop.ApplyMethod, _ => true).SetVoidResult();
         var revoke = module.SetupVoid(FileObjectUrlInterop.RevokeMethod, _ => true).SetVoidResult();

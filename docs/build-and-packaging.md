@@ -15,7 +15,7 @@ From the repository root:
 dotnet restore .\CanDoItAll.FileTools.slnx --configfile .\NuGet.config
 dotnet build .\CanDoItAll.FileTools.slnx -c Release --no-restore -warnaserror
 dotnet test .\CanDoItAll.FileTools.slnx -c Release --no-build --no-restore
-dotnet format .\CanDoItAll.FileTools.slnx --verify-no-changes --no-restore
+dotnet format .\CanDoItAll.FileTools.slnx --verify-no-changes --no-restore --exclude ..\CanDoItAll.Components\
 ```
 
 The Sandbox can be built or run separately:
@@ -24,6 +24,13 @@ The Sandbox can be built or run separately:
 dotnet build .\samples\CanDoItAll.FileTools.Sandbox\CanDoItAll.FileTools.Sandbox.csproj -c Release --no-restore -warnaserror
 dotnet run --project .\samples\CanDoItAll.FileTools.Sandbox\CanDoItAll.FileTools.Sandbox.csproj -c Release --no-build
 ```
+
+The Sandbox optionally consumes the sibling `CanDoItAll.Components` checkout (BaseLib and
+Mermaid) as direct project references when `..\..\..\CanDoItAll.Components` exists next to
+this repository or when the `CanDoItAllComponentsRoot` MSBuild property points to a checkout.
+That link never uses NuGet packages. Without the sibling the Sandbox still builds and renders
+an inert Mermaid seam, which is what CI sees. Shipping packages never reference Components,
+and the package validator keeps enforcing that.
 
 ## Pack all nine libraries
 

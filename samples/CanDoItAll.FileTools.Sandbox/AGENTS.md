@@ -21,6 +21,13 @@ Interactive Server components may inject the sample's server-side provider facto
 
 The host may open a `FileInteraction` only after deliberately mapping an authorized sandbox item key to an opaque `FileReference`. Reads must use bounded fresh streams. Editable demonstrations use the sandbox-local in-memory gateway with optimistic revisions; that gateway is a host adapter example, not a FileTools storage provider.
 
+## Sibling CanDoItAll.Components
+
+- `CanDoItAll.FileTools.Sandbox.csproj` references the sibling `..\..\..\CanDoItAll.Components` checkout (BaseLib and Mermaid) as direct project references when it exists, or the directory named by the `CanDoItAllComponentsRoot` MSBuild property. Never replace that link with NuGet packages.
+- Components-dependent Razor files live under `Components/ComponentsIntegration/` and are excluded from the build when the sibling is absent. `SandboxComponentsSupport` exposes the optional component types so the rest of the sandbox never references Components namespaces directly.
+- `App.razor` loads the BaseLib Material Symbols, Noto font, and Tailwind stylesheets plus `MermaidHeadAssets` through that seam. The Mermaid sample renders `MermaidDiagram` with its own pan/zoom disabled inside the FileTools `FileZoomPanFrame`, so viewport behavior is proven against the shipped FileTools implementation.
+- Shipping FileTools packages must not reference Components; keep the sibling checkout read-only from this repository.
+
 ## Environment constraints
 
 - Interactive components run on the server through SignalR.

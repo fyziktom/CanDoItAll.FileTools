@@ -1,21 +1,69 @@
 @implements IFileInteractionRendererComponent
 
-<div class="sandbox-mermaid" data-testid="interaction-mermaid-view">
-    <div class="sandbox-mermaid__diagram" aria-label="Safe Mermaid renderer seam">
-        <span>Browser</span>
-        <b aria-hidden="true">&rarr;</b>
-        <span>Interaction</span>
-        <b aria-hidden="true">&rarr;</b>
-        <span>Host</span>
-    </div>
-    <div class="sandbox-mermaid__note">
-        <strong>Renderer seam</strong>
-        <span>The sandbox deliberately renders an inert preview without loading Mermaid scripts.</span>
-    </div>
-    <pre><code>@(Context.Text ?? "Mermaid source unavailable")</code></pre>
+<div class="sandbox-mermaid @(UsesComponents ? "sandbox-mermaid--components" : "sandbox-mermaid--seam")"
+     data-testid="interaction-mermaid-view"
+     data-renderer="@(UsesComponents ? "components" : "seam")">
+    @if (UsesComponents)
+    {
+        <FileZoomPanFrame AriaLabel="@($"Zoom and pan {Context.Request.FileName}")"
+                          ResetKey="@Context.Text"
+                          SuppressContentInteraction="true"
+                          data-testid="interaction-mermaid-zoom-pan">
+            <DynamicComponent Type="SandboxComponentsSupport.MermaidDiagramComponentType!"
+                              Parameters="diagramParameters" />
+        </FileZoomPanFrame>
+        <div class="sandbox-mermaid__status" role="status" data-testid="interaction-mermaid-status">
+            <strong>CanDoItAll.Components.Mermaid</strong>
+            <span>@status</span>
+        </div>
+    }
+    else
+    {
+        <div class="sandbox-mermaid__diagram" aria-label="Safe Mermaid renderer seam">
+            <span>Browser</span>
+            <b aria-hidden="true">&rarr;</b>
+            <span>Interaction</span>
+            <b aria-hidden="true">&rarr;</b>
+            <span>Host</span>
+        </div>
+        <div class="sandbox-mermaid__note">
+            <strong>Renderer seam</strong>
+            <span>
+                @(SandboxComponentsSupport.IsAvailable
+                    ? "The Mermaid source is unavailable, so the inert seam is shown."
+                    : "The sibling CanDoItAll.Components checkout was not found, so the sandbox renders an inert preview without loading Mermaid scripts.")
+            </span>
+        </div>
+        <pre><code>@(Context.Text ?? "Mermaid source unavailable")</code></pre>
+    }
 </div>
 
 @code {
+    private Dictionary<string, object?> diagramParameters = new(StringComparer.Ordinal);
+    private string? boundSource;
+    private string status = "Rendering the strict Mermaid diagram…";
+
     [Parameter, EditorRequired]
     public FileInteractionRenderContext Context { get; set; } = default!;
+
+    private bool UsesComponents
+        => SandboxComponentsSupport.MermaidDiagramComponentType is not null
+            && !string.IsNullOrWhiteSpace(Context.Text);
+
+    protected override void OnParametersSet()
+    {
+        if (string.Equals(boundSource, Context.Text, StringComparison.Ordinal) && diagramParameters.Count > 0)
+        {
+            return;
+        }
+
+        boundSource = Context.Text;
+        diagramParameters = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["Source"] = Context.Text ?? string.Empty,
+            ["StatusChanged"] = EventCallback.Factory.Create<string>(this, SetStatus)
+        };
+    }
+
+    private void SetStatus(string message) => status = message;
 }

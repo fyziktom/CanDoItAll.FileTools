@@ -5,13 +5,28 @@
      hidden="@(Context.IsEmpty || interopError is not null || !isReady)"
      aria-hidden="@(Context.IsEmpty || interopError is not null || !isReady)"
      data-testid="@SurfaceTestId">
-    @if (TargetFrame is null)
+    @if (TargetFrame is not null)
     {
-        @TargetContent
+        @TargetFrame(new FileObjectViewTargetFrameContext(Kind, TargetContent))
+    }
+    else if (UsesBuiltInZoomPan)
+    {
+        <FileZoomPanFrame Enabled="ActiveZoomPan.Enabled"
+                          ShowControls="ActiveZoomPan.ShowControls"
+                          WheelMode="ActiveZoomPan.WheelMode"
+                          MinimumZoom="ActiveZoomPan.MinimumZoom"
+                          MaximumZoom="ActiveZoomPan.MaximumZoom"
+                          ZoomFactor="ActiveZoomPan.ZoomFactor"
+                          KeyboardPanStep="ActiveZoomPan.KeyboardPanStep"
+                          SuppressContentInteraction="@(Kind == FileObjectViewKind.Browser)"
+                          AriaLabel="@($"Zoom and pan {Context.Request.FileName}")"
+                          ResetKey="previousStamp">
+            @TargetContent
+        </FileZoomPanFrame>
     }
     else
     {
-        @TargetFrame(new FileObjectViewTargetFrameContext(Kind, TargetContent))
+        @TargetContent
     }
 </div>
 
@@ -32,8 +47,20 @@ else if (interopError is not null)
     [Parameter]
     public FileObjectViewKind Kind { get; set; }
 
+    /// <summary>
+    /// Host-composition seam that decorates the actual target element. When supplied it replaces the built-in
+    /// zoom and pan frame, so a custom frame must render <see cref="FileObjectViewTargetFrameContext.TargetContent"/>
+    /// unchanged and exactly once.
+    /// </summary>
     [Parameter]
     public RenderFragment<FileObjectViewTargetFrameContext>? TargetFrame { get; set; }
+
+    /// <summary>
+    /// Wraps image and sandboxed browser targets in the built-in <see cref="FileZoomPanFrame"/>. Ignored for the
+    /// browser-native PDF viewer, which owns its own zoom, and when a <see cref="TargetFrame"/> is supplied.
+    /// </summary>
+    [Parameter]
+    public FileObjectViewZoomPanOptions? ZoomPan { get; set; }
 
     private ElementReference target;
     private ElementReference activeTarget;
@@ -45,16 +72,31 @@ else if (interopError is not null)
     private bool hasActiveTarget;
     private string? interopError;
     private FileObjectContentStamp? previousStamp;
+    private FileSvgIntrinsicSize? declaredSize;
 
     private string EffectiveMediaType => Context.MediaType
         ?? (Kind == FileObjectViewKind.Pdf ? "application/pdf" : "application/octet-stream");
 
-    private string SurfaceClass => Kind switch
+    private bool UsesBuiltInZoomPan
+        => TargetFrame is null
+            && ZoomPan is not null
+            && Kind is FileObjectViewKind.Image or FileObjectViewKind.Browser;
+
+    private FileObjectViewZoomPanOptions ActiveZoomPan => ZoomPan ?? FileObjectViewZoomPanOptions.Default;
+
+    private string SurfaceClass
     {
-        FileObjectViewKind.Image => "cdi-ft-object-surface cdi-ft-object-surface--image",
-        FileObjectViewKind.Pdf => "cdi-ft-object-surface",
-        _ => "cdi-ft-object-surface cdi-ft-object-surface--browser"
-    };
+        get
+        {
+            var surface = Kind switch
+            {
+                FileObjectViewKind.Image => "cdi-ft-object-surface cdi-ft-object-surface--image",
+                FileObjectViewKind.Pdf => "cdi-ft-object-surface",
+                _ => "cdi-ft-object-surface cdi-ft-object-surface--browser"
+            };
+            return UsesBuiltInZoomPan ? $"{surface} cdi-ft-object-surface--zoom-pan" : surface;
+        }
+    }
 
     private string SurfaceTestId => Kind switch
     {
@@ -65,12 +107,17 @@ else if (interopError is not null)
         _ => "interaction-browser-view"
     };
 
+    private string? DeclaredWidth => FormatDimension(declaredSize?.Width);
+
+    private string? DeclaredHeight => FormatDimension(declaredSize?.Height);
+
     private RenderFragment TargetContent => @<text>
         @if (Kind == FileObjectViewKind.Image)
         {
             <img @key="previousStamp"
                  @ref="target"
                  alt="@Context.Request.FileName"
+                 draggable="false"
                  @onload="HandleTargetLoaded"
                  @onerror="HandleTargetError" />
         }
@@ -103,6 +150,8 @@ else if (interopError is not null)
                     title="@Context.Request.FileName"
                     sandbox=""
                     referrerpolicy="no-referrer"
+                    data-cdi-ft-content-width="@DeclaredWidth"
+                    data-cdi-ft-content-height="@DeclaredHeight"
                     @onload="HandleTargetLoaded"
                     @onerror="HandleTargetError">
             </iframe>
@@ -130,6 +179,9 @@ else if (interopError is not null)
             interopError = null;
             isApplying = true;
             isReady = false;
+            declaredSize = Kind == FileObjectViewKind.Browser
+                ? FileSvgIntrinsicSizeReader.TryRead(Context.Content)
+                : null;
         }
 
         previousStamp = stamp;
@@ -228,6 +280,9 @@ else if (interopError is not null)
             };
         }
     }
+
+    private static string? FormatDimension(double? value)
+        => value?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
     public async ValueTask DisposeAsync()
     {

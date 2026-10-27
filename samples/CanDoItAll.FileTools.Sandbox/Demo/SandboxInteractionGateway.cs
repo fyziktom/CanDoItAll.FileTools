@@ -51,8 +51,13 @@ public sealed class SandboxInteractionGateway : IFileContentSource
             [("project", "artifact-report")] = "pdf",
             [("shared", "manual")] = "pdf",
             [("shared", "brand-cover")] = "image",
+            [("shared", "brand-logo")] = "svg",
             [("shared", "template-data")] = "object"
         };
+
+    private static readonly Lazy<byte[]> CalibrationPng = new(
+        () => SandboxRasterImage.CreateCalibrationPng(1600, 1000),
+        LazyThreadSafetyMode.ExecutionAndPublication);
 
     private readonly Lock gate = new();
     private readonly Dictionary<string, Entry> entries;
@@ -283,10 +288,10 @@ public sealed class SandboxInteractionGateway : IFileContentSource
             mediaType: "text/markdown");
         yield return Text(
             "mermaid",
-            "Mermaid seam",
-            "workflow.mmd",
-            "Sandbox-local safe renderer seam without CanDoItAll.Components.",
-            "flowchart LR\n    Browser --> Interaction\n    Interaction --> Host\n    Host --> Storage\n",
+            "Mermaid diagram",
+            "fleet-dashboard-components.mmd",
+            "CanDoItAll.Components Mermaid wrapper inside the FileTools zoom and pan frame; an inert seam without the sibling checkout.",
+            CreateMermaidSource(),
             mediaType: "text/x-mermaid");
         yield return Text(
             "autosave",
@@ -313,14 +318,22 @@ public sealed class SandboxInteractionGateway : IFileContentSource
             new FileContentRevision("sandbox-binary-r1"));
         yield return new Entry(
             new SandboxInteractionSample(
-                "image", "Image", "status.png",
-                "Built-in bounded image viewer backed by a local object URL.",
+                "image", "Image", "calibration-grid.png",
+                "Built-in image viewer with fit-to-view zoom and pan; the colored corner blocks prove every edge stays reachable.",
                 "viewer", false, false),
             Reference("image"),
-            Convert.FromBase64String(
-                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="),
+            CalibrationPng.Value,
             "image/png",
             new FileContentRevision("sandbox-r5"));
+        yield return new Entry(
+            new SandboxInteractionSample(
+                "svg", "SVG poster", "poster.svg",
+                "Built-in sandboxed SVG viewer; the declared 900 x 1600 size drives fit-to-view zoom and pan.",
+                "viewer", false, false),
+            Reference("svg"),
+            Encoding.UTF8.GetBytes(CreatePosterSvg()),
+            "image/svg+xml",
+            new FileContentRevision("sandbox-r8"));
         yield return new Entry(
             new SandboxInteractionSample(
                 "pdf", "PDF", "brief.pdf",
@@ -362,6 +375,56 @@ public sealed class SandboxInteractionGateway : IFileContentSource
 
     private static FileReference Reference(string id)
         => new(SourceId, $"opaque-{id}-7f4c2a");
+
+    private static string CreateMermaidSource()
+        => string.Join(
+            '\n',
+            "flowchart TB",
+            "    subgraph shell[\"Fleet Maintenance Dashboard (Blazor WASM PWA)\"]",
+            "        direction TB",
+            "        sw[\"Service worker + manifest\"] -. offline shell .-> home[\"Home: summary tiles + vehicle table\"]",
+            "        home --> detail[\"Vehicle detail: history + next service\"]",
+            "        detail --> service[\"FleetService: status classification\"]",
+            "        service --> seed[(\"seed.json: 24 vehicles\")]",
+            "        service --> rules[\"Maintenance rules: interval + mileage\"]",
+            "        rules --> alerts[\"Alerts: overdue, due soon, healthy\"]",
+            "        alerts --> notify[\"Notification center\"]",
+            "        notify --> export[\"Export: CSV + printable report\"]",
+            "        export --> tests[\"Tests: bUnit + Playwright\"]",
+            "        tests --> release[\"Release gate: PWA audit + offline smoke\"]",
+            "    end",
+            string.Empty);
+
+    private static string CreatePosterSvg()
+    {
+        var builder = new StringBuilder();
+        builder.Append("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"900\" height=\"1600\" viewBox=\"0 0 900 1600\">");
+        builder.Append("<rect width=\"900\" height=\"1600\" fill=\"#fbfaf7\"/>");
+        for (int x = 0; x <= 900; x += 100)
+        {
+            builder.Append(CultureInfo.InvariantCulture, $"<line x1=\"{x}\" y1=\"0\" x2=\"{x}\" y2=\"1600\" stroke=\"#d7d3c8\" stroke-width=\"1\"/>");
+        }
+
+        for (int y = 0; y <= 1600; y += 100)
+        {
+            builder.Append(CultureInfo.InvariantCulture, $"<line x1=\"0\" y1=\"{y}\" x2=\"900\" y2=\"{y}\" stroke=\"#d7d3c8\" stroke-width=\"1\"/>");
+        }
+
+        AppendPosterMarker(builder, 40, 40, "#c83a2f", "TOP-LEFT");
+        AppendPosterMarker(builder, 620, 40, "#2459d3", "TOP-RIGHT");
+        AppendPosterMarker(builder, 40, 1440, "#d98c1b", "BOTTOM-LEFT");
+        AppendPosterMarker(builder, 620, 1440, "#2e8b57", "BOTTOM-RIGHT");
+        builder.Append("<text x=\"450\" y=\"820\" text-anchor=\"middle\" font-family=\"system-ui, sans-serif\" font-size=\"64\" font-weight=\"700\" fill=\"#1d1d1b\">900 x 1600 poster</text>");
+        builder.Append("<text x=\"450\" y=\"880\" text-anchor=\"middle\" font-family=\"system-ui, sans-serif\" font-size=\"28\" fill=\"#686761\">Pan to every corner at any zoom</text>");
+        builder.Append("</svg>");
+        return builder.ToString();
+    }
+
+    private static void AppendPosterMarker(StringBuilder builder, int x, int y, string fill, string label)
+    {
+        builder.Append(CultureInfo.InvariantCulture, $"<rect x=\"{x}\" y=\"{y}\" width=\"240\" height=\"120\" rx=\"12\" fill=\"{fill}\"/>");
+        builder.Append(CultureInfo.InvariantCulture, $"<text x=\"{x + 120}\" y=\"{y + 72}\" text-anchor=\"middle\" font-family=\"system-ui, sans-serif\" font-size=\"30\" font-weight=\"700\" fill=\"#fff\">{label}</text>");
+    }
 
     private static byte[] CreateMinimalPdf()
     {

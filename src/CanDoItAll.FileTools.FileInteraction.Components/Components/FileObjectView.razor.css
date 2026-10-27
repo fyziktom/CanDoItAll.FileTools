@@ -52,6 +52,24 @@
     align-self: center;
 }
 
+.cdi-ft-object-surface--zoom-pan {
+    place-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.cdi-ft-object-surface--zoom-pan img {
+    inline-size: 100%;
+    block-size: 100%;
+    max-inline-size: none;
+    max-block-size: none;
+    object-fit: contain;
+}
+
+.cdi-ft-object-surface--zoom-pan iframe {
+    min-block-size: 0;
+}
+
 .cdi-ft-object-state {
     display: grid;
     min-block-size: 10rem;

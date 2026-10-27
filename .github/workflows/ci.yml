@@ -31,7 +31,7 @@ jobs:
         run: dotnet test .\CanDoItAll.FileTools.slnx -c Release --no-build --no-restore
 
       - name: Verify formatting
-        run: dotnet format .\CanDoItAll.FileTools.slnx --verify-no-changes --no-restore
+        run: dotnet format .\CanDoItAll.FileTools.slnx --verify-no-changes --no-restore --exclude ..\CanDoItAll.Components\
 
       - name: Pack
         shell: pwsh

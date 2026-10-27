@@ -25,7 +25,7 @@ The optional renderer packages also reference Abstractions and FileInteraction.C
 - Providers are leaf adapters into Abstractions. The included filesystem provider does not reference either UI package.
 - Desktop is an independent host-side adapter over the operating-system process boundary; UI packages consume it only through host callbacks.
 - Optional renderers extend the explicit `FileInteractionComponentBuilder`. Markdig is present only in the Markdown package, and ClosedXML only in the Spreadsheet package.
-- Samples and tests are composition/verification projects and are never package dependencies.
+- Samples and tests are composition/verification projects and are never package dependencies. The Sandbox may consume the sibling `CanDoItAll.Components` checkout as direct project references for proof; shipping packages never do.
 
 ## Runtime ownership
 
