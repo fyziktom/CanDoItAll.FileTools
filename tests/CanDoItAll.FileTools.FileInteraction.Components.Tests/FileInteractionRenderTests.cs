@@ -12,6 +12,27 @@ namespace CanDoItAll.FileTools.FileInteraction.Components.Tests;
 public sealed class FileInteractionRenderTests
 {
     [Fact]
+    public async Task Render_OptInMetadataFallbackEncodesNamesWithoutReadingPayload()
+    {
+        await using var renderer = new InteractionHtmlRenderer();
+        var source = new DelegateContentSource((_, _) => ValueTask.FromResult(
+            new FileContentLease(new PayloadReadForbiddenStream(), "application/zip", 128)));
+        var parameters = Parameters(new FileInteractionRequest(
+            new FileReference("test", "opaque"), "<unsafe>.zip", mediaType: "application/zip", size: 128), source);
+        parameters[nameof(FileInteraction.Composition)] = new FileInteractionComponentBuilder()
+            .AddBuiltIns().AddMetadataFallback().Build();
+
+        var html = await renderer.RenderAsync(parameters);
+
+        Assert.Contains("data-testid=\"interaction-metadata-view\"", html, StringComparison.Ordinal);
+        Assert.Contains("&lt;unsafe&gt;.zip", html, StringComparison.Ordinal);
+        Assert.Contains("128 bytes", html, StringComparison.Ordinal);
+        Assert.Equal(1, source.OpenCount);
+        Assert.DoesNotContain("<iframe", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("<object", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Render_TextViewRunsLoadLifecycleAndRendersContent()
     {
         await using var renderer = new InteractionHtmlRenderer();
@@ -266,10 +287,13 @@ public sealed class FileInteractionRenderTests
     [InlineData("movie.avi", "video/x-msvideo", "video")]
     [InlineData("movie.mp4", "video/mp4", "video")]
     [InlineData("sound.mp3", "audio/mpeg", "audio")]
-    public async Task Render_MediaTypesUseNativeControls(
+    [InlineData("sound.wav", "audio/wav", "audio")]
+    [InlineData("movie.webm", null, "video")]
+    [InlineData("movie.ogv", null, "video")]
+    public async Task Render_MediaTypesUseNativeControlsWithoutAutoplay(
         string fileName,
-        string mediaType,
-        string element)
+        string? mediaType,
+        string target)
     {
         await using var renderer = new InteractionHtmlRenderer();
 
@@ -278,11 +302,12 @@ public sealed class FileInteractionRenderTests
                 new FileReference("test", fileName),
                 fileName,
                 mediaType: mediaType),
-            Source("bounded media payload", mediaType)));
+            Source("bounded media payload", mediaType ?? "application/octet-stream")));
 
-        Assert.Contains($"data-testid=\"interaction-{element}-view\"", html, StringComparison.Ordinal);
-        Assert.Contains($"<{element}", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("controls", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains($"data-testid=\"interaction-{target}-view\"", html, StringComparison.Ordinal);
+        Assert.Contains($"<{target}", html, StringComparison.Ordinal);
+        Assert.Contains("controls", html, StringComparison.Ordinal);
+        Assert.Contains("preload=\"metadata\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("autoplay", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("<iframe", html, StringComparison.OrdinalIgnoreCase);
     }
@@ -325,6 +350,12 @@ public sealed class FileInteractionRenderTests
                 mediaType,
                 bytes.Length));
         });
+
+    private sealed class PayloadReadForbiddenStream : MemoryStream
+    {
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("Metadata preview must not read payload bytes.");
+    }
 
     private sealed class InteractionHtmlRenderer : IAsyncDisposable
     {

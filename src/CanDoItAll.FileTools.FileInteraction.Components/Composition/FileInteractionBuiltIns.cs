@@ -54,12 +54,12 @@ public static class FileInteractionBuiltIns
             .AddProfile(new FileInteractionProfileDescriptor(
                 FileInteractionBuiltInProfileIds.Audio,
                 FileInteractionCapabilities.View,
-                extensions: [".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"],
+                extensions: [".wav", ".mp3", ".m4a", ".aac", ".ogg", ".flac"],
                 mediaTypes: ["audio/*"]))
             .AddProfile(new FileInteractionProfileDescriptor(
                 FileInteractionBuiltInProfileIds.Video,
                 FileInteractionCapabilities.View,
-                extensions: [".mp4", ".webm", ".ogv", ".mov", ".avi", ".mkv"],
+                extensions: [".mp4", ".webm", ".ogv", ".avi", ".mov", ".mkv"],
                 mediaTypes: ["video/*"]))
             .AddProfile(new FileInteractionProfileDescriptor(
                 FileInteractionBuiltInProfileIds.Object,
@@ -99,11 +99,9 @@ public static class FileInteractionBuiltIns
     public static FileInteractionComponentBuilder AddMetadataFallback(this FileInteractionComponentBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
-
         return builder.AddRenderer(new FileInteractionRendererDescriptor(
             "base-object-metadata-view", FileInteractionBuiltInProfileIds.Object, FileInteractionMode.View,
-            typeof(MetadataFileView), FileInteractionContentKind.Binary,
-            priority: 100,
+            typeof(FileMetadataView), FileInteractionContentKind.Binary, priority: 100,
             contentRequirement: FileInteractionContentRequirement.MetadataOnly));
     }
 }

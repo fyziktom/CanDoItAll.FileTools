@@ -4,6 +4,8 @@
 
 Implement or select one `IFileBrowserProvider` per source, then construct `FileBrowserSession` from those providers. Source IDs must be unique. For a source set that changes at runtime, construct a `FileBrowserSourceSet` with a stable revision and call `UpdateSourcesAsync`; a stale, fixed provider list is not sufficient for changing project/resource filters.
 
+Replacing or invalidating sources retires the previous operation generation immediately. An operation that finishes after its generation is retired completes as canceled even if its provider has not observed cancellation yet. Retired operations cannot publish a snapshot, and any content lease returned by a retired operation is disposed before cancellation is reported to the caller.
+
 `FileBrowserSessionOptions` controls page size, requested metadata, default sort, and state retention. The session exposes initialization, source/folder navigation, paging, search, refresh/retry, selection, item/source/all invalidation, content reads, and provider-action delegation.
 
 ## Provider contract

@@ -91,7 +91,7 @@ else if (interopError is not null)
             var surface = Kind switch
             {
                 FileObjectViewKind.Image => "cdi-ft-object-surface cdi-ft-object-surface--image",
-                FileObjectViewKind.Pdf or FileObjectViewKind.Audio or FileObjectViewKind.Video => "cdi-ft-object-surface",
+                FileObjectViewKind.Pdf => "cdi-ft-object-surface",
                 _ => "cdi-ft-object-surface cdi-ft-object-surface--browser"
             };
             return UsesBuiltInZoomPan ? $"{surface} cdi-ft-object-surface--zoom-pan" : surface;
@@ -134,25 +134,14 @@ else if (interopError is not null)
                 </div>
             </object>
         }
-        else if (Kind == FileObjectViewKind.Audio)
-        {
-            <audio @key="previousStamp"
-                   @ref="target"
-                   controls
-                   preload="metadata"
+        else if (Kind == FileObjectViewKind.Audio) {
+            <audio @key="previousStamp" @ref="target" controls preload="metadata"
                    aria-label="@Context.Request.FileName"
-                   @onloadedmetadata="HandleTargetLoaded"
-                   @onerror="HandleTargetError" />
-        }
-        else if (Kind == FileObjectViewKind.Video)
-        {
-            <video @key="previousStamp"
-                   @ref="target"
-                   controls
-                   preload="metadata"
+                   @onloadedmetadata="HandleTargetLoaded" @onerror="HandleTargetError" />
+        } else if (Kind == FileObjectViewKind.Video) {
+            <video @key="previousStamp" @ref="target" controls preload="metadata" playsinline
                    aria-label="@Context.Request.FileName"
-                   @onloadedmetadata="HandleTargetLoaded"
-                   @onerror="HandleTargetError" />
+                   @onloadedmetadata="HandleTargetLoaded" @onerror="HandleTargetError" />
         }
         else
         {
@@ -173,7 +162,7 @@ else if (interopError is not null)
     {
         if (!Enum.IsDefined(Kind))
         {
-            throw new InvalidOperationException("Only image, PDF, audio, video, and sandboxed browser object URL viewers are supported.");
+            throw new InvalidOperationException("The object URL viewer kind is not supported.");
         }
 
         var stamp = new FileObjectContentStamp(
@@ -246,8 +235,7 @@ else if (interopError is not null)
             activeTarget = appliedTarget;
             hasActiveTarget = true;
             isApplying = false;
-            isReady = Kind is FileObjectViewKind.Pdf or FileObjectViewKind.Browser
-                or FileObjectViewKind.Audio or FileObjectViewKind.Video;
+            isReady = Kind is not FileObjectViewKind.Image;
             StateHasChanged();
         }
         catch (Exception exception) when (FileObjectUrlInterop.IsExpectedFailure(exception))
@@ -287,6 +275,7 @@ else if (interopError is not null)
             {
                 FileObjectViewKind.Image => "The browser could not decode this image.",
                 FileObjectViewKind.Pdf => "The browser could not display this PDF.",
+                FileObjectViewKind.Audio or FileObjectViewKind.Video => "The browser could not decode this media file.",
                 _ => "The browser could not display this file type."
             };
         }

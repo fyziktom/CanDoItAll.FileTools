@@ -7,6 +7,42 @@ namespace CanDoItAll.FileTools.FileInteraction.Components.Tests;
 
 public sealed class FileObjectUrlInteropTests : FileToolsBunitContext
 {
+    [Theory]
+    [InlineData(FileObjectViewKind.Audio, "audio/wav", "audio")]
+    [InlineData(FileObjectViewKind.Video, "video/mp4", "video")]
+    public async Task NativeMedia_LoadErrorAndReplacementKeepControlsAndOwnedUrlLifetime(
+        FileObjectViewKind kind, string mediaType, string target)
+    {
+        var module = JSInterop.SetupModule(FileObjectUrlInterop.ModulePath);
+        var apply = module.SetupVoid(FileObjectUrlInterop.ApplyMethod, _ => true).SetVoidResult();
+        var revoke = module.SetupVoid(FileObjectUrlInterop.RevokeMethod, _ => true).SetVoidResult();
+        var cut = Render<FileObjectView>(parameters => parameters
+            .Add(component => component.Context, CreateContext("sample.media", mediaType))
+            .Add(component => component.Kind, kind));
+
+        var media = cut.Find(target);
+        Assert.True(media.HasAttribute("controls"));
+        Assert.False(media.HasAttribute("autoplay"));
+        Assert.Equal("metadata", media.GetAttribute("preload"));
+        Assert.Empty(cut.FindAll("iframe, object"));
+        Assert.Equal("src", Assert.IsType<string>(Assert.Single(apply.Invocations).Arguments[3]));
+        await media.TriggerEventAsync("onloadedmetadata", EventArgs.Empty);
+        Assert.False(cut.Find($"[data-testid='interaction-{target}-view']").HasAttribute("hidden"));
+
+        await media.TriggerEventAsync("onerror", EventArgs.Empty);
+        Assert.True(cut.Find($"[data-testid='interaction-{target}-view']").HasAttribute("hidden"));
+        Assert.Contains("host-provided action", cut.Find("[data-testid='interaction-object-fallback']").TextContent);
+
+        await cut.InvokeAsync(() => cut.Render(parameters => parameters
+            .Add(component => component.Context, CreateContext("replacement.media", mediaType))
+            .Add(component => component.Kind, kind)));
+        Assert.Empty(cut.FindAll("[data-testid='interaction-object-fallback']"));
+        Assert.Equal(2, apply.Invocations.Count);
+        Assert.Single(revoke.Invocations);
+        await cut.InvokeAsync(() => cut.Instance.DisposeAsync().AsTask());
+        Assert.Equal(2, revoke.Invocations.Count);
+    }
+
     [Fact]
     public void ContentStamp_NewBackingBytesForSameMetadataRequiresRefresh()
     {

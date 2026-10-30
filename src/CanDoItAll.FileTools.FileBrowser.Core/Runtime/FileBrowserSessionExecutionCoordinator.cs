@@ -92,7 +92,7 @@ internal sealed class FileBrowserSessionExecutionCoordinator : IAsyncDisposable
         {
             await operationGate.WaitAsync(linked.Token).ConfigureAwait(false);
             gateHeld = true;
-            linked.Token.ThrowIfCancellationRequested();
+            ThrowIfExecutionCanceled(lease, linked.Token);
             command = retryRequested ? retryCommand : requestedCommand;
             if (command is null)
             {
@@ -104,7 +104,7 @@ internal sealed class FileBrowserSessionExecutionCoordinator : IAsyncDisposable
             error = null;
             Publish(lease.SourceGeneration);
             await command.Action(linked.Token).ConfigureAwait(false);
-            linked.Token.ThrowIfCancellationRequested();
+            ThrowIfExecutionCanceled(lease, linked.Token);
             retryCommand = null;
             operation = FileBrowserOperationKind.Idle;
             Publish(lease.SourceGeneration);
@@ -117,7 +117,7 @@ internal sealed class FileBrowserSessionExecutionCoordinator : IAsyncDisposable
             }
 
             operation = FileBrowserOperationKind.Idle;
-            if (linked.IsCancellationRequested)
+            if (IsExecutionCanceled(lease, linked.Token))
             {
                 PublishIfCurrent(lease.SourceGeneration);
                 throw CreateCanceled(exception, linked.Token);
@@ -153,16 +153,21 @@ internal sealed class FileBrowserSessionExecutionCoordinator : IAsyncDisposable
         {
             await operationGate.WaitAsync(linked.Token).ConfigureAwait(false);
             gateHeld = true;
+            ThrowIfExecutionCanceled(lease, linked.Token);
             T result = await action(linked.Token).ConfigureAwait(false);
-            if (linked.IsCancellationRequested && result is IAsyncDisposable disposable)
+            if (IsExecutionCanceled(lease, linked.Token))
             {
-                await disposable.DisposeAsync().ConfigureAwait(false);
+                if (result is IAsyncDisposable disposable)
+                {
+                    await disposable.DisposeAsync().ConfigureAwait(false);
+                }
+
+                throw new OperationCanceledException(linked.Token);
             }
 
-            linked.Token.ThrowIfCancellationRequested();
             return result;
         }
-        catch (Exception exception) when (linked.IsCancellationRequested)
+        catch (Exception exception) when (IsExecutionCanceled(lease, linked.Token))
         {
             throw CreateCanceled(exception, linked.Token);
         }
@@ -226,7 +231,7 @@ internal sealed class FileBrowserSessionExecutionCoordinator : IAsyncDisposable
                 throw retirementError;
             }
 
-            actionCancellation.Token.ThrowIfCancellationRequested();
+            ThrowIfExecutionCanceled(lease, actionCancellation.Token);
             checkpoint = new SessionCheckpoint(runtime.Capture(), error, retryCommand);
             if (busyOperation.HasValue)
             {
@@ -236,7 +241,7 @@ internal sealed class FileBrowserSessionExecutionCoordinator : IAsyncDisposable
             }
 
             await action(actionCancellation.Token).ConfigureAwait(false);
-            actionCancellation.Token.ThrowIfCancellationRequested();
+            ThrowIfExecutionCanceled(lease, actionCancellation.Token);
             if (clearRetryOnSuccess)
             {
                 retryCommand = null;
@@ -258,7 +263,7 @@ internal sealed class FileBrowserSessionExecutionCoordinator : IAsyncDisposable
             }
 
             operation = FileBrowserOperationKind.Idle;
-            if (actionCancellation.IsCancellationRequested || gateCancellation.IsCancellationRequested)
+            if (IsExecutionCanceled(lease, actionCancellation.Token) || gateCancellation.IsCancellationRequested)
             {
                 PublishIfCurrent(lease.SourceGeneration);
                 throw CreateCanceled(exception, actionCancellation.IsCancellationRequested
@@ -288,6 +293,19 @@ internal sealed class FileBrowserSessionExecutionCoordinator : IAsyncDisposable
             gateCancellation.Dispose();
             actionCancellation.Dispose();
             EndExecution(lease);
+        }
+    }
+
+    private bool IsExecutionCanceled(ExecutionLease lease, CancellationToken cancellationToken)
+        => cancellationToken.IsCancellationRequested
+            || lease.LifetimeToken.IsCancellationRequested
+            || !sourceRevisions.IsCurrent(lease.SourceGeneration);
+
+    private void ThrowIfExecutionCanceled(ExecutionLease lease, CancellationToken cancellationToken)
+    {
+        if (IsExecutionCanceled(lease, cancellationToken))
+        {
+            throw new OperationCanceledException(cancellationToken);
         }
     }
 

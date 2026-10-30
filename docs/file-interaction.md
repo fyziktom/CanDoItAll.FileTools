@@ -6,7 +6,11 @@ The shell bounds full-content loading with `MaximumContentBytes` (16 MiB by defa
 
 ## Composition and resolution
 
-Use `FileInteractionComponentBuilder` to register profiles, history factories, and renderer descriptors. `AddBuiltIns` supplies text view/edit, a raster-image view and an SVG browser-frame view (both inside the built-in zoom and pan frame), browser-native PDF view, bounded audio/video with native browser controls, and a browser-frame fallback; both browser frames use an empty `sandbox` capability set. SVG is deliberately excluded from the raster profile. `AddMarkdown` contributes the optional higher-priority Markdown profile and renderer.
+Use `FileInteractionComponentBuilder` to register profiles, history factories, and renderer descriptors. `AddBuiltIns` supplies text view/edit, a raster-image view and an SVG browser-frame view (both inside the built-in zoom and pan frame), browser-native PDF view, audio/video controls, and a browser-frame fallback; both browser frames use an empty `sandbox` capability set. SVG is deliberately excluded from the raster profile. `AddMarkdown` contributes the optional higher-priority Markdown profile and renderer.
+
+Audio and video use bounded component-owned blob URLs with native controls and metadata preloading, without autoplay. Codec support belongs to the browser; decode failure shows an explicit unavailable-preview state. Replacement and disposal pause media, clear its source and revoke the owned URL. Native media controls, like PDF controls, remain browser-owned.
+
+Call `AddMetadataFallback()` after `AddBuiltIns()` when unsupported types should display encoded file metadata and an explicit unavailable-preview message instead of a browser frame. It overrides only the generic object profile's renderer, requests no payload content and leaves supported profiles and SVG isolation unchanged. Hosts still supply authorized open/reveal/download actions.
 
 Profile resolution considers requested mode/capability and type evidence. Exact media types score above media-type wildcards, exact extensions, and fallback patterns; priority breaks ties at the best match kind. An equal final result is reported as ambiguous rather than selected arbitrarily.
 
@@ -17,8 +21,6 @@ services.AddFileInteractionComponents(builder => builder
     .AddProfile(myProfile)
     .AddRenderer(myRenderer));
 ```
-
-`AddMetadataFallback()` opts into a metadata-only renderer for the built-in Object fallback profile after `AddBuiltIns()`. Unsupported files then display their name, media type and size without reading or embedding payload bytes. Known image, PDF, text, audio/video and optional specialized renderers retain their bounded content requirements. Audio/video use the existing object URL lifecycle and remain subject to the host content limit.
 
 Registrations are explicit: an application that uses only images can build a smaller composition instead of calling `AddBuiltIns`.
 
@@ -31,7 +33,7 @@ Registrations are explicit: an application that uses only images can build a sma
 
 Custom renderers should keep application effects event-up. They must not directly download, mutate storage, open local paths, or treat content as trusted markup. The built-in browser-native PDF `<object>` is an explicit boundary: embedded links/actions are controlled by the browser/PDF viewer and are not converted into FileInteraction host callbacks. A host that must mediate every PDF action should register/use a different renderer or route PDFs elsewhere. Collocated JavaScript modules and CSS isolation keep type-specific behavior scoped; clean up object URLs, listeners, and module references on replacement/disposal.
 
-`FileObjectView.TargetFrame` is the host-composition seam for decorating the actual `<img>`, `<object>`, or sandboxed `<iframe>`. Its `FileObjectViewTargetFrameContext` supplies the `Kind` and the `TargetContent` fragment. A host renderer can place that fragment inside its own zoom/pan component while `FileObjectView` continues to own bounded bytes, object-URL replacement/disposal, loading and error state, and browser-frame security attributes. Render `TargetContent` unchanged and exactly once. SVG adapters must retain `FileObjectViewKind.Browser`; do not replace the sandboxed frame with inline SVG. A supplied `TargetFrame` replaces the built-in zoom and pan frame described below.
+`FileObjectView.TargetFrame` is the host-composition seam for decorating the actual `<img>`, `<object>`, `<audio>`, `<video>`, or sandboxed `<iframe>`. Its `FileObjectViewTargetFrameContext` supplies the `Kind` and the `TargetContent` fragment. A host renderer can place that fragment inside its own zoom/pan component while `FileObjectView` continues to own bounded bytes, object-URL replacement/disposal, loading and error state, and browser-frame security attributes. Render `TargetContent` unchanged and exactly once. SVG adapters must retain `FileObjectViewKind.Browser`; do not replace the sandboxed frame with inline SVG. A supplied `TargetFrame` replaces the built-in zoom and pan frame described below.
 
 ## Zoom and pan
 
@@ -39,7 +41,7 @@ Custom renderers should keep application effects event-up. They must not directl
 
 Pointer drag, touch pinch, wheel, `+`/`-`/`0`, arrow keys, `Home`/`End`, and double-click stay in the browser. Blazor is involved only for the optional toolbar, `ZoomInAsync`, `ZoomOutAsync`, `ResetAsync`, and the value-equality `ResetKey`. `WheelMode` selects `Zoom` (an unmodified wheel zooms around the pointer and is released to page scrolling once a limit is reached), `ControlKey` (Ctrl/Meta plus wheel zooms while an unmodified wheel pans overflowing content), or `Disabled`. Set `SuppressContentInteraction` for sandboxed frames and other embedded documents so pointer input reaches the frame; the content plane becomes `inert`. The viewport exposes `data-cdi-ft-zoom`, `data-cdi-ft-scale`, `data-cdi-ft-pan-x`, `data-cdi-ft-pan-y`, `data-cdi-ft-overflow`, and `data-cdi-ft-natural` for tests and host chrome.
 
-The built-in `ImageFileView` and `SvgFileView` renderers enable the frame through `FileObjectView.ZoomPan` with `FileObjectViewZoomPanOptions`; a host that renders `FileObjectView` directly opts in the same way. `FileObjectView` reads the declared SVG size from the bounded bytes without resolving DTDs, entities, or external resources and forwards it to the frame, so a fixed-size SVG is fitted instead of being clipped inside its frame. The browser-native PDF viewer ignores `ZoomPan` because the browser owns that zoom. The shell's renderer pane scrolls instead of clipping when a renderer is taller than the available height, so fixed-height host renderers stay reachable.
+The built-in `ImageFileView` and `SvgFileView` renderers enable the frame through `FileObjectView.ZoomPan` with `FileObjectViewZoomPanOptions`; a host that renders `FileObjectView` directly opts in the same way. `FileObjectView` reads the declared SVG size from the bounded bytes without resolving DTDs, entities, or external resources and forwards it to the frame, so a fixed-size SVG is fitted instead of being clipped inside its frame. Browser-native PDF, audio, and video viewers ignore `ZoomPan` so their native controls remain interactive. The shell's renderer pane scrolls instead of clipping when a renderer is taller than the available height, so fixed-height host renderers stay reachable.
 
 ## Controlled mode
 

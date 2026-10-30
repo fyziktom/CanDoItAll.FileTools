@@ -1,0 +1,20 @@
+@implements IFileInteractionRendererComponent
+
+<section role="status" data-testid="interaction-metadata-view">
+    <p>Inline preview is unavailable for this file type. Use a host-provided action to open or download it.</p>
+    <dl>
+        <dt>File</dt>
+        <dd>@Context.Request.FileName</dd>
+        <dt>Content type</dt>
+        <dd>@(Context.MediaType ?? Context.Request.MediaType ?? "Unknown")</dd>
+        @if (Context.Request.Size is { } size) {
+            <dt>Declared size</dt>
+            <dd>@size bytes</dd>
+        }
+    </dl>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public FileInteractionRenderContext Context { get; set; } = default!;
+}
