@@ -250,6 +250,8 @@ public sealed class FileObjectUrlInteropTests : FileToolsBunitContext
     [InlineData(FileObjectViewKind.Image, "image/png", "interaction-image-view", "img")]
     [InlineData(FileObjectViewKind.Pdf, "application/pdf", "interaction-pdf-view", "object")]
     [InlineData(FileObjectViewKind.Browser, "image/svg+xml", "interaction-browser-view", "iframe")]
+    [InlineData(FileObjectViewKind.Audio, "audio/wav", "interaction-audio-view", "audio")]
+    [InlineData(FileObjectViewKind.Video, "video/mp4", "interaction-video-view", "video")]
     public void DefaultTarget_RendersDirectlyInsideTheExistingSurface(
         FileObjectViewKind kind,
         string mediaType,

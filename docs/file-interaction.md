@@ -6,7 +6,7 @@ The shell bounds full-content loading with `MaximumContentBytes` (16 MiB by defa
 
 ## Composition and resolution
 
-Use `FileInteractionComponentBuilder` to register profiles, history factories, and renderer descriptors. `AddBuiltIns` supplies text view/edit, a raster-image view and an SVG browser-frame view (both inside the built-in zoom and pan frame), browser-native PDF view, and a browser-frame fallback; both browser frames use an empty `sandbox` capability set. SVG is deliberately excluded from the raster profile. `AddMarkdown` contributes the optional higher-priority Markdown profile and renderer.
+Use `FileInteractionComponentBuilder` to register profiles, history factories, and renderer descriptors. `AddBuiltIns` supplies text view/edit, a raster-image view and an SVG browser-frame view (both inside the built-in zoom and pan frame), browser-native PDF view, bounded audio/video with native browser controls, and a browser-frame fallback; both browser frames use an empty `sandbox` capability set. SVG is deliberately excluded from the raster profile. `AddMarkdown` contributes the optional higher-priority Markdown profile and renderer.
 
 Profile resolution considers requested mode/capability and type evidence. Exact media types score above media-type wildcards, exact extensions, and fallback patterns; priority breaks ties at the best match kind. An equal final result is reported as ambiguous rather than selected arbitrarily.
 
@@ -17,6 +17,8 @@ services.AddFileInteractionComponents(builder => builder
     .AddProfile(myProfile)
     .AddRenderer(myRenderer));
 ```
+
+`AddMetadataFallback()` opts into a metadata-only renderer for the built-in Object fallback profile after `AddBuiltIns()`. Unsupported files then display their name, media type and size without reading or embedding payload bytes. Known image, PDF, text, audio/video and optional specialized renderers retain their bounded content requirements. Audio/video use the existing object URL lifecycle and remain subject to the host content limit.
 
 Registrations are explicit: an application that uses only images can build a smaller composition instead of calling `AddBuiltIns`.
 

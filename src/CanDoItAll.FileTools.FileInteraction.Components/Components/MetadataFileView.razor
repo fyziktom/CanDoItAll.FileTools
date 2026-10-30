@@ -1,0 +1,16 @@
+@implements IFileInteractionRendererComponent
+
+<div class="cdi-ft-object-state" role="status" data-testid="interaction-metadata-view">
+    <p>@Context.Request.FileName</p>
+    <p>@(Context.MediaType ?? Context.Request.MediaType ?? "Unknown file type")</p>
+    @if (Context.Request.Size is long size)
+    {
+        <p>@size bytes</p>
+    }
+    <p>Preview is not available for this file type. Use a host-provided action to open or download it.</p>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public FileInteractionRenderContext Context { get; set; } = default!;
+}

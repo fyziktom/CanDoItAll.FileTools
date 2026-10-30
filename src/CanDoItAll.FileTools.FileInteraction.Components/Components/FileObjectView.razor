@@ -91,7 +91,7 @@ else if (interopError is not null)
             var surface = Kind switch
             {
                 FileObjectViewKind.Image => "cdi-ft-object-surface cdi-ft-object-surface--image",
-                FileObjectViewKind.Pdf => "cdi-ft-object-surface",
+                FileObjectViewKind.Pdf or FileObjectViewKind.Audio or FileObjectViewKind.Video => "cdi-ft-object-surface",
                 _ => "cdi-ft-object-surface cdi-ft-object-surface--browser"
             };
             return UsesBuiltInZoomPan ? $"{surface} cdi-ft-object-surface--zoom-pan" : surface;
@@ -102,6 +102,8 @@ else if (interopError is not null)
     {
         FileObjectViewKind.Image => "interaction-image-view",
         FileObjectViewKind.Pdf => "interaction-pdf-view",
+        FileObjectViewKind.Audio => "interaction-audio-view",
+        FileObjectViewKind.Video => "interaction-video-view",
         _ => "interaction-browser-view"
     };
 
@@ -132,6 +134,26 @@ else if (interopError is not null)
                 </div>
             </object>
         }
+        else if (Kind == FileObjectViewKind.Audio)
+        {
+            <audio @key="previousStamp"
+                   @ref="target"
+                   controls
+                   preload="metadata"
+                   aria-label="@Context.Request.FileName"
+                   @onloadedmetadata="HandleTargetLoaded"
+                   @onerror="HandleTargetError" />
+        }
+        else if (Kind == FileObjectViewKind.Video)
+        {
+            <video @key="previousStamp"
+                   @ref="target"
+                   controls
+                   preload="metadata"
+                   aria-label="@Context.Request.FileName"
+                   @onloadedmetadata="HandleTargetLoaded"
+                   @onerror="HandleTargetError" />
+        }
         else
         {
             <iframe @key="previousStamp"
@@ -151,7 +173,7 @@ else if (interopError is not null)
     {
         if (!Enum.IsDefined(Kind))
         {
-            throw new InvalidOperationException("Only image, PDF, and sandboxed browser object URL viewers are supported.");
+            throw new InvalidOperationException("Only image, PDF, audio, video, and sandboxed browser object URL viewers are supported.");
         }
 
         var stamp = new FileObjectContentStamp(
@@ -224,7 +246,8 @@ else if (interopError is not null)
             activeTarget = appliedTarget;
             hasActiveTarget = true;
             isApplying = false;
-            isReady = Kind is FileObjectViewKind.Pdf or FileObjectViewKind.Browser;
+            isReady = Kind is FileObjectViewKind.Pdf or FileObjectViewKind.Browser
+                or FileObjectViewKind.Audio or FileObjectViewKind.Video;
             StateHasChanged();
         }
         catch (Exception exception) when (FileObjectUrlInterop.IsExpectedFailure(exception))

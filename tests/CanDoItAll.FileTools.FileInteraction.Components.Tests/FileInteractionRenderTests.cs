@@ -263,12 +263,13 @@ public sealed class FileInteractionRenderTests
     }
 
     [Theory]
-    [InlineData("movie.avi", "video/x-msvideo")]
-    [InlineData("movie.mp4", "video/mp4")]
-    [InlineData("sound.mp3", "audio/mpeg")]
-    public async Task Render_BrowserMediaTypesUseSandboxedFrame(
+    [InlineData("movie.avi", "video/x-msvideo", "video")]
+    [InlineData("movie.mp4", "video/mp4", "video")]
+    [InlineData("sound.mp3", "audio/mpeg", "audio")]
+    public async Task Render_MediaTypesUseNativeControls(
         string fileName,
-        string mediaType)
+        string mediaType,
+        string element)
     {
         await using var renderer = new InteractionHtmlRenderer();
 
@@ -279,9 +280,11 @@ public sealed class FileInteractionRenderTests
                 mediaType: mediaType),
             Source("bounded media payload", mediaType)));
 
-        Assert.Contains("data-testid=\"interaction-browser-view\"", html, StringComparison.Ordinal);
-        Assert.Contains("<iframe", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("sandbox=\"\"", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains($"data-testid=\"interaction-{element}-view\"", html, StringComparison.Ordinal);
+        Assert.Contains($"<{element}", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("controls", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("autoplay", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("<iframe", html, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]

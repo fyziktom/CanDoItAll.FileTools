@@ -6,6 +6,8 @@ public static class FileInteractionBuiltInProfileIds
     public const string Image = "base-image";
     public const string Svg = "base-svg-inert";
     public const string Pdf = "base-pdf";
+    public const string Audio = "base-audio";
+    public const string Video = "base-video";
     public const string Object = "base-object";
 }
 
@@ -50,6 +52,16 @@ public static class FileInteractionBuiltIns
                 mediaTypes: ["application/pdf"],
                 priority: 10))
             .AddProfile(new FileInteractionProfileDescriptor(
+                FileInteractionBuiltInProfileIds.Audio,
+                FileInteractionCapabilities.View,
+                extensions: [".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"],
+                mediaTypes: ["audio/*"]))
+            .AddProfile(new FileInteractionProfileDescriptor(
+                FileInteractionBuiltInProfileIds.Video,
+                FileInteractionCapabilities.View,
+                extensions: [".mp4", ".webm", ".ogv", ".mov", ".avi", ".mkv"],
+                mediaTypes: ["video/*"]))
+            .AddProfile(new FileInteractionProfileDescriptor(
                 FileInteractionBuiltInProfileIds.Object,
                 FileInteractionCapabilities.View,
                 extensions: ["*"],
@@ -72,9 +84,26 @@ public static class FileInteractionBuiltIns
                 "base-pdf-view", FileInteractionBuiltInProfileIds.Pdf, FileInteractionMode.View,
                 typeof(PdfFileView), FileInteractionContentKind.Binary))
             .AddRenderer(new FileInteractionRendererDescriptor(
+                "base-audio-view", FileInteractionBuiltInProfileIds.Audio, FileInteractionMode.View,
+                typeof(AudioFileView), FileInteractionContentKind.Binary))
+            .AddRenderer(new FileInteractionRendererDescriptor(
+                "base-video-view", FileInteractionBuiltInProfileIds.Video, FileInteractionMode.View,
+                typeof(VideoFileView), FileInteractionContentKind.Binary))
+            .AddRenderer(new FileInteractionRendererDescriptor(
                 "base-object-view", FileInteractionBuiltInProfileIds.Object, FileInteractionMode.View,
                 typeof(ObjectFileView), FileInteractionContentKind.Binary));
 
         return builder;
+    }
+
+    public static FileInteractionComponentBuilder AddMetadataFallback(this FileInteractionComponentBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        return builder.AddRenderer(new FileInteractionRendererDescriptor(
+            "base-object-metadata-view", FileInteractionBuiltInProfileIds.Object, FileInteractionMode.View,
+            typeof(MetadataFileView), FileInteractionContentKind.Binary,
+            priority: 100,
+            contentRequirement: FileInteractionContentRequirement.MetadataOnly));
     }
 }
