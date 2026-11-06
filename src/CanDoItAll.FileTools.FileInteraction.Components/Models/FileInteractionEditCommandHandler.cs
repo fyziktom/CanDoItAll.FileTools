@@ -10,6 +10,7 @@ internal sealed class FileInteractionEditCommandHandler
     private readonly Func<FileInteractionEditingRuntime?> getCurrentRuntime;
     private readonly Func<int> getGeneration;
     private readonly Func<bool> hostCanSave;
+    private readonly Func<bool> allowConflictRetry;
     private readonly Func<int, FileInteractionEditingRuntime, bool> isCurrent;
     private readonly Func<ValueTask> publishState;
 
@@ -19,6 +20,7 @@ internal sealed class FileInteractionEditCommandHandler
         Func<FileInteractionEditingRuntime?> getCurrentRuntime,
         Func<int> getGeneration,
         Func<bool> hostCanSave,
+        Func<bool> allowConflictRetry,
         Func<int, FileInteractionEditingRuntime, bool> isCurrent,
         Func<ValueTask> publishState)
     {
@@ -27,6 +29,7 @@ internal sealed class FileInteractionEditCommandHandler
         this.getCurrentRuntime = getCurrentRuntime ?? throw new ArgumentNullException(nameof(getCurrentRuntime));
         this.getGeneration = getGeneration ?? throw new ArgumentNullException(nameof(getGeneration));
         this.hostCanSave = hostCanSave ?? throw new ArgumentNullException(nameof(hostCanSave));
+        this.allowConflictRetry = allowConflictRetry ?? throw new ArgumentNullException(nameof(allowConflictRetry));
         this.isCurrent = isCurrent ?? throw new ArgumentNullException(nameof(isCurrent));
         this.publishState = publishState ?? throw new ArgumentNullException(nameof(publishState));
     }
@@ -154,7 +157,7 @@ internal sealed class FileInteractionEditCommandHandler
     {
         var runtime = getCurrentRuntime();
         var operationGeneration = getGeneration();
-        if (runtime is null || saveUi.Error is not FileSaveConflictException conflict)
+        if (!allowConflictRetry() || runtime is null || saveUi.Error is not FileSaveConflictException conflict)
         {
             return;
         }
@@ -179,7 +182,7 @@ internal sealed class FileInteractionEditCommandHandler
         saveUi.MarkDirty();
         await publishState();
         await Task.Yield();
-        if (isCurrent(operationGeneration, runtime))
+        if (allowConflictRetry() && isCurrent(operationGeneration, runtime))
         {
             await SaveAsync(runtime, operationGeneration);
         }

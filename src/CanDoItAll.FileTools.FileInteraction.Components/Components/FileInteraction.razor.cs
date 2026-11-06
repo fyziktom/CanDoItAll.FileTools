@@ -18,6 +18,10 @@ public partial class FileInteraction : ComponentBase, IAsyncDisposable
     private int generation;
     private bool showPreview;
     private bool disposed;
+    private CancellationTokenSource? conflictRead;
+    private TextConflictReview? conflictReview;
+    private string? conflictReviewError;
+    private bool applyingConflictReview;
 
     public FileInteraction()
     {
@@ -27,6 +31,7 @@ public partial class FileInteraction : ComponentBase, IAsyncDisposable
             () => editing,
             () => generation,
             () => SaveRequested.HasDelegate,
+            () => !RequireConflictReview,
             IsCurrent,
             PublishStateAsync);
         previewEvents = new FileInteractionPreviewEventBridge(
@@ -92,6 +97,9 @@ public partial class FileInteraction : ComponentBase, IAsyncDisposable
     public bool AllowModeSwitch { get; set; } = true;
 
     [Parameter]
+    public bool RequireConflictReview { get; set; }
+
+    [Parameter]
     public string? AriaLabel { get; set; }
 
     [Parameter]
@@ -105,6 +113,10 @@ public partial class FileInteraction : ComponentBase, IAsyncDisposable
     private ReadOnlyMemory<byte> CurrentContent => editing?.Content ?? surface.Content;
 
     private string? CurrentText => editing?.Text ?? surface.Text;
+
+    private TextConflictReview? ActiveConflictReview =>
+        RequireConflictReview && surface.Mode == FileInteractionMode.Edit
+        && conflictReview is { } review && ReferenceEquals(saveUi.Error, review.Conflict) ? review : null;
 
     private Dictionary<string, object> RendererParameters => new()
     {
@@ -203,6 +215,7 @@ public partial class FileInteraction : ComponentBase, IAsyncDisposable
         FileInteractionComponentComposition composition)
     {
         var currentGeneration = ++generation;
+        CloseConflictReview();
         surface.CancelLoad();
         await ResetEditingAsync();
         if (disposed || currentGeneration != generation)
@@ -296,7 +309,7 @@ public partial class FileInteraction : ComponentBase, IAsyncDisposable
             initialContent,
             MaximumContentBytes,
             saveTarget,
-            () => IsCurrent(operationGeneration) && SaveRequested.HasDelegate,
+            () => IsCurrent(operationGeneration) && SaveRequested.HasDelegate && !RequireConflictReview,
             () => IsCurrent(operationGeneration)
                 && ReferenceEquals(surface.Profile, targetProfile)
                 && surface.Request == targetRequest);
@@ -321,6 +334,96 @@ public partial class FileInteraction : ComponentBase, IAsyncDisposable
         {
             showPreview = !showPreview;
         }
+    }
+
+    private async Task ReadConflictAsync()
+    {
+        if (!RequireConflictReview || conflictRead is not null || applyingConflictReview
+            || editing is not { ContentKind: FileInteractionContentKind.Text } runtime
+            || saveUi.Error is not FileSaveConflictException conflict
+            || surface.Request is not { Mode: FileInteractionMode.Edit } request || ContentSource is not { } source)
+        {
+            return;
+        }
+
+        var operationGeneration = generation;
+        using var cancellation = new CancellationTokenSource();
+        conflictRead = cancellation;
+        conflictReview = null;
+        conflictReviewError = null;
+        bool IsReadingCurrentConflict() => IsCurrent(operationGeneration, runtime)
+            && ReferenceEquals(conflictRead, cancellation) && ReferenceEquals(saveUi.Error, conflict);
+        try
+        {
+            var observed = await new FileInteractionContentLoader().LoadAsync(source,
+                new FileInteractionRequest(request.File, request.FileName, request.Mode, request.MediaType),
+                MaximumContentBytes, cancellation.Token);
+            if (IsReadingCurrentConflict())
+            {
+                if (observed.Revision is { } revision)
+                {
+                    conflictReview = new(conflict, revision, FileInteractionTextBuffer.Decode(observed.Content).Text);
+                }
+                else
+                {
+                    conflictReviewError = "The saved file could not be read with a current revision.";
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            if (IsReadingCurrentConflict())
+            {
+                conflictReviewError = "The current file could not be read. Your draft remains open.";
+                await LoadFailed.InvokeAsync(exception);
+            }
+        }
+        finally
+        {
+            if (ReferenceEquals(conflictRead, cancellation))
+            {
+                conflictRead = null;
+            }
+        }
+    }
+
+    private async Task ApplyConflictReviewAsync(TextConflictReview review)
+    {
+        if (applyingConflictReview || !ReferenceEquals(ActiveConflictReview, review)
+            || editing is not { } runtime || !SaveRequested.HasDelegate)
+        {
+            return;
+        }
+
+        var operationGeneration = generation;
+        applyingConflictReview = true;
+        try
+        {
+            var outcome = await FileInteractionOperationExecutor.ExecuteAsync(
+                () => runtime.ResolveConflictByRebasingAsync(review.Revision),
+                () => IsCurrent(operationGeneration, runtime));
+            if (outcome.IsCurrent)
+            {
+                CloseConflictReview();
+                saveUi.Synchronize(runtime.State);
+                await PublishStateAsync();
+            }
+        }
+        finally
+        {
+            applyingConflictReview = false;
+        }
+    }
+
+    private void CloseConflictReview()
+    {
+        conflictRead?.Cancel();
+        conflictRead = null;
+        conflictReview = null;
+        conflictReviewError = null;
     }
 
     private bool IsCurrent(int operationGeneration)
@@ -360,9 +463,11 @@ public partial class FileInteraction : ComponentBase, IAsyncDisposable
 
         disposed = true;
         generation++;
+        CloseConflictReview();
         surface.CancelLoad();
         await ResetEditingAsync();
         await surface.DisposeAsync();
     }
 
+    private sealed record TextConflictReview(FileSaveConflictException Conflict, FileContentRevision Revision, string SavedText);
 }

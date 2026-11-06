@@ -224,6 +224,59 @@ public sealed class FileInteractionInteractiveTests : FileToolsBunitContext
     }
 
     [Fact]
+    public async Task ReviewedConflictReadsSavedTextAndRequiresASeparateConditionalSave()
+    {
+        var file = new FileReference("test", "notes.txt");
+        var requests = new List<FileSaveRequest>();
+        var savedText = "opening text";
+        string? savedRevision = "r1";
+        var source = new DelegateContentSource((_, _) =>
+        {
+            var bytes = Encoding.UTF8.GetBytes(savedText);
+            return ValueTask.FromResult(new FileContentLease(new MemoryStream(bytes, writable: false),
+                "text/plain", bytes.Length, savedRevision is null ? null : new FileContentRevision(savedRevision)));
+        });
+        var cut = Render<FileInteraction>(parameters => parameters
+            .Add(component => component.Request, Request("notes.txt"))
+            .Add(component => component.ContentSource, source)
+            .Add(component => component.RequireConflictReview, true)
+            .Add(component => component.SaveRequested, args =>
+            {
+                requests.Add(args.Request);
+                if (requests.Count == 1)
+                {
+                    throw new FileSaveConflictException(file, args.Request.ExpectedRevision, new("r2"));
+                }
+
+                args.SetPersistedRevision(new("r4"));
+            }));
+        await cut.Find("textarea").InputAsync("local draft");
+        await cut.Find("[data-testid='interaction-save']").ClickAsync();
+
+        Assert.Empty(cut.FindAll("[data-testid='interaction-conflict-rebase'], [data-testid='interaction-conflict-overwrite']"));
+        savedText = "saved by a peer";
+        savedRevision = null;
+        await cut.Find("[data-testid='interaction-conflict-read']").ClickAsync();
+        Assert.NotNull(cut.Find("[data-testid='interaction-conflict-read-error']"));
+        Assert.Empty(cut.FindAll("[data-testid='interaction-conflict-apply']"));
+
+        savedRevision = "r3";
+        await cut.Find("[data-testid='interaction-conflict-read']").ClickAsync();
+        Assert.Contains(savedText, cut.Find("[data-testid='interaction-conflict-review']").TextContent, StringComparison.Ordinal);
+        Assert.Equal("local draft", EditorValue(cut));
+        await cut.Find("[data-testid='interaction-conflict-apply']").ClickAsync();
+
+        Assert.Single(requests);
+        Assert.Equal("local draft", EditorValue(cut));
+        Assert.True(cut.Instance.CurrentState.IsDirty);
+        Assert.False(cut.Instance.CurrentState.HasConflict);
+        await cut.Find("[data-testid='interaction-save']").ClickAsync();
+        Assert.Equal(2, requests.Count);
+        Assert.Equal(new FileContentRevision("r3"), requests[1].ExpectedRevision);
+        Assert.False(requests[1].IsAutomatic);
+    }
+
+    [Fact]
     public async Task SaveConflict_OverwriteActionRetriesWithoutExpectedRevisionAndCompletes()
     {
         var file = new FileReference("test", "notes.txt");

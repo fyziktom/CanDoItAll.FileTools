@@ -96,29 +96,59 @@
         @if (saveUi.Error is not null)
         {
             <div class="cdi-ft-interaction__save-error" role="alert" data-testid="interaction-save-error">
-                <span>@saveUi.ErrorMessage</span>
+                <span>@(RequireConflictReview && saveUi.Error is FileSaveConflictException
+                    ? "The saved file changed. Your draft is still open."
+                    : saveUi.ErrorMessage)</span>
                 @if (saveUi.Error is FileSaveConflictException conflict)
                 {
                     <div class="cdi-ft-interaction__conflict-actions">
-                        @if (conflict.ActualRevision.HasValue)
+                        @if (RequireConflictReview)
                         {
-                            <button type="button" data-testid="interaction-conflict-rebase"
-                                    @onclick="editCommands.RebaseConflictAsync">Retry against current revision</button>
+                            @if (surface.Mode == FileInteractionMode.Edit && editing?.ContentKind == FileInteractionContentKind.Text)
+                            {
+                                <button type="button" data-testid="interaction-conflict-read" disabled="@(conflictRead is not null || applyingConflictReview)"
+                                        @onclick="ReadConflictAsync">@(conflictRead is null ? "Read saved file" : "Reading…")</button>
+                            }
                         }
-                        <button type="button" data-testid="interaction-conflict-overwrite"
-                                @onclick="editCommands.OverwriteConflictAsync">Retry without revision</button>
+                        else
+                        {
+                            @if (conflict.ActualRevision.HasValue)
+                            {
+                                <button type="button" data-testid="interaction-conflict-rebase"
+                                        @onclick="editCommands.RebaseConflictAsync">Retry against current revision</button>
+                            }
+                            <button type="button" data-testid="interaction-conflict-overwrite"
+                                    @onclick="editCommands.OverwriteConflictAsync">Retry without revision</button>
+                        }
                     </div>
                 }
             </div>
         }
+        @if (conflictReviewError is not null && surface.Mode == FileInteractionMode.Edit)
+        {
+            <div class="cdi-ft-interaction__save-error" role="alert" data-testid="interaction-conflict-read-error">@conflictReviewError</div>
+        }
 
+        var review = ActiveConflictReview;
         <div class="cdi-ft-interaction__workspace"
-             data-preview="@(showPreview && surface.Mode == FileInteractionMode.Edit && editing?.Preview is not null ? "shown" : "hidden")"
-             data-placement="@(surface.Profile?.Preview.Placement.ToString().ToLowerInvariant() ?? "beside")">
+             data-preview="@(review is not null || showPreview && surface.Mode == FileInteractionMode.Edit && editing?.Preview is not null ? "shown" : "hidden")"
+             data-placement="@(review is null ? surface.Profile?.Preview.Placement.ToString().ToLowerInvariant() ?? "beside" : "beside")">
             <section class="cdi-ft-interaction__pane" aria-label="@($"{surface.Mode} file surface")">
                 <DynamicComponent Type="surface.Renderer.ComponentType" Parameters="RendererParameters" />
             </section>
-            @if (showPreview && surface.Mode == FileInteractionMode.Edit && editing?.Preview is { } activePreview)
+            @if (review is not null)
+            {
+                <section class="cdi-ft-interaction__pane cdi-ft-interaction__preview" aria-label="Saved file comparison" data-testid="interaction-conflict-review">
+                    <div class="cdi-ft-interaction__preview-heading cdi-ft-interaction__review-heading">
+                        <strong>Saved file</strong>
+                        <button type="button" @onclick="CloseConflictReview" disabled="@applyingConflictReview">Cancel review</button>
+                        <button type="button" data-testid="interaction-conflict-apply" disabled="@applyingConflictReview"
+                                @onclick="() => ApplyConflictReviewAsync(review)">Apply reviewed revision to draft</button>
+                    </div>
+                    <pre class="cdi-ft-interaction__review-text" tabindex="0">@review.SavedText</pre>
+                </section>
+            }
+            else if (showPreview && surface.Mode == FileInteractionMode.Edit && editing?.Preview is { } activePreview)
             {
                 <section class="cdi-ft-interaction__pane cdi-ft-interaction__preview"
                          aria-label="Live preview" data-testid="interaction-preview">

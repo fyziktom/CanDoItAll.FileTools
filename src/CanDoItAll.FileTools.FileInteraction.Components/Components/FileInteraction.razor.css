@@ -193,6 +193,19 @@
     font-size: 0.75rem;
 }
 
+.cdi-ft-interaction__review-heading {
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.cdi-ft-interaction__review-text {
+    margin: 0;
+    padding: 0.55rem;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
 @container cdi-ft-interaction (max-width: 720px) {
     .cdi-ft-interaction__header {
         flex-wrap: wrap;
