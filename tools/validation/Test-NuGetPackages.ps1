@@ -439,8 +439,8 @@ foreach ($package in $packages) {
                 throw "Only the Markdown package may depend on Markdig."
             }
 
-            if ($dependencyId -eq 'ClosedXML' -and $id -ne 'CanDoItAll.FileTools.FileInteraction.Spreadsheet') {
-                throw "Only the Spreadsheet package may depend on ClosedXML."
+            if ($dependencyId -in @('ClosedXML', 'ClosedXML.Parser') -and $id -ne 'CanDoItAll.FileTools.FileInteraction.Spreadsheet') {
+                throw "Only the Spreadsheet package may depend on $dependencyId."
             }
         }
 

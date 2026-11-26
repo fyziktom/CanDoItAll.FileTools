@@ -32,7 +32,7 @@ browser behavior, or application deployment. Hosts retain those responsibilities
 | Profile resolution, save/autosave, preview, and bounded edit history | `CanDoItAll.FileTools.FileInteraction.Core` | Abstractions |
 | Blazor interaction shell and zoom/pan frame plus text, raster-image, browser-native PDF/media, sandboxed SVG, and configurable metadata or browser fallback renderers | `CanDoItAll.FileTools.FileInteraction.Components` | Abstractions, FileInteraction.Core, ASP.NET Core shared framework |
 | Optional Markdown view/edit/preview renderer | `CanDoItAll.FileTools.FileInteraction.Markdown` | Abstractions, FileInteraction.Core, FileInteraction.Components, Markdig, ASP.NET Core shared framework |
-| Optional bounded XLSX worksheet viewer | `CanDoItAll.FileTools.FileInteraction.Spreadsheet` | Abstractions, FileInteraction.Core, FileInteraction.Components, ClosedXML, ASP.NET Core shared framework |
+| Optional bounded XLSX worksheet viewer | `CanDoItAll.FileTools.FileInteraction.Spreadsheet` | Abstractions, FileInteraction.Core, FileInteraction.Components, ClosedXML, ClosedXML.Parser, ASP.NET Core shared framework |
 
 Install only the right-hand packages needed by the host. In particular, a browser-only application does not acquire Markdig, ClosedXML, or interaction renderers, and a custom provider can depend on Abstractions without taking Blazor.
 

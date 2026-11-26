@@ -24,7 +24,7 @@ The optional renderer packages also reference Abstractions and FileInteraction.C
 - Component packages are Razor class libraries over the corresponding core. They use the ASP.NET Core shared framework and isolated or collocated static assets.
 - Providers are leaf adapters into Abstractions. The included filesystem provider does not reference either UI package.
 - Desktop is an independent host-side adapter over the operating-system process boundary; UI packages consume it only through host callbacks.
-- Optional renderers extend the explicit `FileInteractionComponentBuilder`. Markdig is present only in the Markdown package, and ClosedXML only in the Spreadsheet package.
+- Optional renderers extend the explicit `FileInteractionComponentBuilder`. The Markdown package uses Markdig. The Spreadsheet package owns ClosedXML and ClosedXML.Parser.
 - Samples and tests are composition/verification projects and are never package dependencies. The Sandbox may consume the sibling `CanDoItAll.Components` checkout as direct project references for proof; shipping packages never do.
 
 ## Runtime ownership

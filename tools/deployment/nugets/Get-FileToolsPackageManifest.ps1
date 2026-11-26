@@ -83,7 +83,7 @@ function Get-FileToolsPackageManifest {
                 'CanDoItAll.FileTools.FileInteraction.Core'
                 'CanDoItAll.FileTools.FileInteraction.Components'
             )
-            PackageReferences = @('ClosedXML')
+            PackageReferences = @('ClosedXML', 'ClosedXML.Parser')
             IsRazorClassLibrary = $true
         }
     )
