@@ -68,7 +68,7 @@ else
                                     <th scope="col" class="cdi-ft-spreadsheet__row-heading">Row</th>
                                     @for (var columnIndex = 0; columnIndex < ResolveColumnCount(worksheet); columnIndex++)
                                     {
-                                        <th scope="col">@FormatColumnName(columnIndex)</th>
+                                        <th scope="col">@FormatColumnName(worksheet.FirstColumnNumber - 1 + columnIndex)</th>
                                     }
                                 </tr>
                             </thead>
@@ -77,7 +77,7 @@ else
                                 {
                                     IReadOnlyList<string> row = worksheet.Values[rowIndex];
                                     <tr>
-                                        <th scope="row" class="cdi-ft-spreadsheet__row-heading">@(rowIndex + 1)</th>
+                                        <th scope="row" class="cdi-ft-spreadsheet__row-heading">@(worksheet.FirstRowNumber + rowIndex)</th>
                                         @for (var columnIndex = 0; columnIndex < ResolveColumnCount(worksheet); columnIndex++)
                                         {
                                             <td>@ReadCell(row, columnIndex)</td>
@@ -169,7 +169,7 @@ else
                     Context.Content,
                     MaximumPreviewWorksheets,
                     MaximumPreviewRows,
-                    MaximumPreviewColumns)),
+                    MaximumPreviewColumns), cancellationToken),
                 cancellationToken);
             if (generation == Volatile.Read(ref previewGeneration) && !cancellationToken.IsCancellationRequested)
             {

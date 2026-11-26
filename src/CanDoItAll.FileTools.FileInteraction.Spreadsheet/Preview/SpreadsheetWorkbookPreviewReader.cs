@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.Globalization;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Xml;
@@ -16,8 +15,12 @@ public sealed class SpreadsheetWorkbookPreviewReader
         new(CreatePortableGraphicEngine, LazyThreadSafetyMode.ExecutionAndPublication);
 
     public SpreadsheetWorkbookPreview Read(SpreadsheetWorkbookPreviewRequest request)
+        => Read(request, CancellationToken.None);
+
+    public SpreadsheetWorkbookPreview Read(SpreadsheetWorkbookPreviewRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(request.WorkbookName);
         ValidateLimit(request.MaxWorksheets, SpreadsheetWorkbookPreviewRequest.MaximumWorksheets, nameof(request.MaxWorksheets));
         ValidateLimit(request.MaxRows, SpreadsheetWorkbookPreviewRequest.MaximumRows, nameof(request.MaxRows));
@@ -36,11 +39,13 @@ public sealed class SpreadsheetWorkbookPreviewReader
 
         ValidateArchive(request.WorkbookName, request.Content);
         using XLWorkbook workbook = OpenWorkbook(request.WorkbookName, request.Content);
+        using var calculation = new PreviewFormulaCalculation(workbook, cancellationToken);
         int totalWorksheetCount = workbook.Worksheets.Count;
         SpreadsheetWorksheetPreview[] worksheets = workbook.Worksheets
             .Take(request.MaxWorksheets)
             .Select((worksheet, index) => CreateWorksheetPreview(
                 worksheet,
+                calculation,
                 index + 1,
                 request.MaxRows,
                 request.MaxColumns))
@@ -173,6 +178,7 @@ public sealed class SpreadsheetWorkbookPreviewReader
 
     private static SpreadsheetWorksheetPreview CreateWorksheetPreview(
         IXLWorksheet worksheet,
+        PreviewFormulaCalculation calculation,
         int position,
         int maxRows,
         int maxColumns)
@@ -202,7 +208,7 @@ public sealed class SpreadsheetWorkbookPreviewReader
             var row = new List<string>(previewColumnCount);
             for (var columnIndex = 1; columnIndex <= previewColumnCount; columnIndex++)
             {
-                row.Add(CellToString(usedRange.Cell(rowIndex, columnIndex)));
+                row.Add(calculation.FormatCell(usedRange.Cell(rowIndex, columnIndex)));
             }
 
             values.Add(row);
@@ -216,29 +222,10 @@ public sealed class SpreadsheetWorkbookPreviewReader
             usedColumnCount,
             values,
             RowsTruncated: usedRowCount > previewRowCount,
-            ColumnsTruncated: usedColumnCount > previewColumnCount);
-    }
-
-    private static string CellToString(IXLCell cell)
-    {
-        if (cell.HasFormula)
+            ColumnsTruncated: usedColumnCount > previewColumnCount)
         {
-            return "=" + cell.FormulaA1;
-        }
-
-        if (cell.IsEmpty())
-        {
-            return string.Empty;
-        }
-
-        return cell.Value.Type switch
-        {
-            XLDataType.Blank => string.Empty,
-            XLDataType.Boolean => cell.GetBoolean().ToString(CultureInfo.InvariantCulture),
-            XLDataType.Number => cell.GetDouble().ToString(CultureInfo.InvariantCulture),
-            XLDataType.DateTime => cell.GetDateTime().ToString("O", CultureInfo.InvariantCulture),
-            XLDataType.TimeSpan => cell.GetTimeSpan().ToString(),
-            _ => cell.GetFormattedString()
+            FirstRowNumber = usedRange.RangeAddress.FirstAddress.RowNumber,
+            FirstColumnNumber = usedRange.RangeAddress.FirstAddress.ColumnNumber
         };
     }
 

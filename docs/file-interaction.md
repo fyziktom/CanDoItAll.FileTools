@@ -24,6 +24,25 @@ services.AddFileInteractionComponents(builder => builder
 
 Registrations are explicit: an application that uses only images can build a smaller composition instead of calling `AddBuiltIns`.
 
+## Spreadsheet preview
+
+`AddSpreadsheet()` registers the read-only XLSX viewer. The grid displays Excel
+number formats, including dates, percentages and currency. Its row and column
+headings use worksheet coordinates. A formula can reference cells outside the
+visible rows, columns or tabs, including quoted worksheet names and absolute references.
+
+The viewer uses saved results when available. When a result is missing or the
+workbook requests a full recalculation, ClosedXML evaluates common arithmetic,
+comparisons, text and date functions, aggregates such as `SUM` and `COUNTIFS`,
+conditions such as `IF` and `IFERROR`, and lookups such as `VLOOKUP` and
+`INDEX` with `MATCH`. Calculated values retain the cell's display format.
+
+Calculations use only data in the opened workbook. For unsupported formulas, linked
+workbooks or calculations beyond the preview limits, the viewer displays the saved
+Excel result when present. Otherwise the cell reads **Calculation unavailable**.
+Excel errors such as `#DIV/0!` retain their own values. The viewer calculates in
+memory for the lifetime of the preview.
+
 ## Add a renderer
 
 1. Define a `FileInteractionProfileDescriptor` with matching extensions/media types, supported capabilities, priority, and optional autosave/preview/history defaults.

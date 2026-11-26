@@ -28,6 +28,8 @@ public sealed record SpreadsheetWorksheetPreview(
     bool RowsTruncated,
     bool ColumnsTruncated)
 {
+    public int FirstRowNumber { get; init; } = 1;
+    public int FirstColumnNumber { get; init; } = 1;
     public bool IsTruncated => RowsTruncated || ColumnsTruncated;
 }
 

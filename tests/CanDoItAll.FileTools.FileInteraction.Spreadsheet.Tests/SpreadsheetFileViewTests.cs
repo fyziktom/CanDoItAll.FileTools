@@ -25,6 +25,7 @@ public sealed class SpreadsheetFileViewTests : FileToolsBunitContext
             Assert.Equal(4, cut.FindAll("[role='tab']").Count);
             Assert.Single(cut.FindAll("[data-testid='spreadsheet-grid']"));
             Assert.Contains("Summary marker", cut.Markup, StringComparison.Ordinal);
+            Assert.Equal("30", cut.Find("[data-testid='spreadsheet-grid'] tbody tr:nth-child(3) td:nth-of-type(2)").TextContent);
             Assert.DoesNotContain("Revenue marker", cut.Markup, StringComparison.Ordinal);
         });
 
@@ -43,6 +44,11 @@ public sealed class SpreadsheetFileViewTests : FileToolsBunitContext
             Assert.Equal("false", cut.FindAll("[role='tab']")[0].GetAttribute("aria-selected"));
             Assert.Equal("true", cut.FindAll("[role='tab']")[1].GetAttribute("aria-selected"));
         });
+
+        cut.FindAll("[role='tab']")[3].Click();
+        cut.WaitForAssertion(() => Assert.Equal(
+            ["Row", "AA", "AB", "7", "8"],
+            cut.FindAll("[data-testid='spreadsheet-grid'] th").Select(header => header.TextContent)));
     }
 
     [Fact]
@@ -59,7 +65,7 @@ public sealed class SpreadsheetFileViewTests : FileToolsBunitContext
     }
 
     [Fact]
-    public void Reader_PreservesFormulaTextAndWorksheetOrder()
+    public void Reader_ReturnsFormulaValuesInWorksheetOrder()
     {
         var reader = new SpreadsheetWorkbookPreviewReader();
 
@@ -69,7 +75,7 @@ public sealed class SpreadsheetFileViewTests : FileToolsBunitContext
 
         Assert.Equal(4, result.TotalWorksheetCount);
         Assert.Equal(["Summary", "Revenue", "Expenses", "Forecast"], result.Worksheets.Select(sheet => sheet.Name));
-        Assert.Equal("=SUM(B1:B2)", result.Worksheets[0].Values[2][1]);
+        Assert.Equal("30", result.Worksheets[0].Values[2][1]);
     }
 
     private static FileInteractionRenderContext CreateContext(byte[] content)
@@ -89,7 +95,9 @@ public sealed class SpreadsheetFileViewTests : FileToolsBunitContext
         AddWorksheet(workbook, "Summary", "Summary marker");
         AddWorksheet(workbook, "Revenue", "Revenue marker");
         AddWorksheet(workbook, "Expenses", "Expenses marker");
-        AddWorksheet(workbook, "Forecast", "Forecast marker");
+        IXLWorksheet forecast = workbook.Worksheets.Add("Forecast");
+        forecast.Cell("AA7").Value = "Forecast marker";
+        forecast.Cell("AB8").FormulaA1 = "Summary!B3";
         workbook.Worksheet("Summary").Cell("B3").FormulaA1 = "SUM(B1:B2)";
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
