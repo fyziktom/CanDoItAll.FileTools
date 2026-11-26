@@ -2,6 +2,8 @@
 
 FileInteraction starts after a host has authorized and resolved a file. It consumes a `FileInteractionRequest`, an independent `IFileContentSource`, and an immutable component composition. It never depends on a FileBrowser session.
 
+Set `Embedded="true"` when a dialog already displays the file name. A view-only file then uses the full height available to its renderer. The embedded toolbar appears for available mode changes, external open actions or editing. Save status, conflict review and renderer-specific tools remain available. Standalone instances display their own file name and mode controls by default.
+
 The shell bounds full-content loading with `MaximumContentBytes` (16 MiB by default) and reports an error instead of allocating beyond that limit. The same limit is enforced before accepting every text or binary editor change: an oversized replacement is surfaced but does not replace content, advance the edit revision, or change the existing dirty state; a later valid edit can continue. Keep metadata-only renderers metadata-only. Route larger streaming formats to a separate host-owned viewer until an appropriate bounded streaming contract is added; do not raise the limit without an application memory budget.
 
 ## Composition and resolution

@@ -32,17 +32,23 @@ public sealed class FileInteractionRenderTests
         Assert.DoesNotContain("<object", html, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
-    public async Task Render_TextViewRunsLoadLifecycleAndRendersContent()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Render_TextViewRunsLoadLifecycleAndRendersContent(bool embedded)
     {
         await using var renderer = new InteractionHtmlRenderer();
         var source = Source("alpha < beta", "text/plain");
 
-        var html = await renderer.RenderAsync(Parameters(
+        var parameters = Parameters(
             new FileInteractionRequest(new FileReference("test", "notes.txt"), "notes.txt"),
-            source));
+            source);
+        parameters[nameof(FileInteraction.Embedded)] = embedded;
+        var html = await renderer.RenderAsync(parameters);
 
         Assert.Contains("data-state=\"loaded\"", html, StringComparison.Ordinal);
+        Assert.Equal(!embedded, html.Contains("cdi-ft-interaction__identity", StringComparison.Ordinal));
+        Assert.Equal(!embedded, html.Contains("interaction-mode-diff", StringComparison.Ordinal));
         Assert.Contains("data-testid=\"interaction-text-view\"", html, StringComparison.Ordinal);
         Assert.Contains("role=\"group\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("role=\"tab\"", html, StringComparison.Ordinal);

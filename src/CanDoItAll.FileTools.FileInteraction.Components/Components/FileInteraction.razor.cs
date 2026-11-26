@@ -105,6 +105,11 @@ public partial class FileInteraction : ComponentBase, IAsyncDisposable
     [Parameter]
     public bool FillAvailableHeight { get; set; }
 
+    [Parameter]
+    public bool Embedded { get; set; }
+
+    private static readonly FileInteractionMode[] ToolbarModes = Enum.GetValues<FileInteractionMode>();
+
     public FileInteractionState CurrentState =>
         FileInteractionStateFactory.Create(surface, editing, saveUi, editUi);
 

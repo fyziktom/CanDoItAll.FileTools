@@ -5,60 +5,64 @@
          data-mode="@surface.Mode.ToString().ToLowerInvariant()"
          aria-label="@(string.IsNullOrWhiteSpace(AriaLabel) ? $"File interaction for {surface.Request?.FileName ?? Request?.FileName ?? "file"}" : AriaLabel.Trim())"
          data-testid="file-interaction">
-    <header class="cdi-ft-interaction__header">
-        <div class="cdi-ft-interaction__identity">
-            <span class="cdi-ft-interaction__eyebrow">File interaction</span>
-            <strong title="@surface.Request?.FileName">@(surface.Request?.FileName ?? Request?.FileName ?? "File")</strong>
-        </div>
+    @{
+        bool showModes = !Embedded || AllowModeSwitch && ToolbarModes.Any(mode => mode != surface.Mode && CanUseMode(mode));
+        var editor = surface.Mode == FileInteractionMode.Edit ? editing : null;
+    }
+    @if (!Embedded || showModes || editor is not null || OpenExternallyRequested.HasDelegate) {
+        <header class="cdi-ft-interaction__header">
+            @if (!Embedded) {
+                <div class="cdi-ft-interaction__identity">
+                    <span class="cdi-ft-interaction__eyebrow">File interaction</span>
+                    <strong title="@surface.Request?.FileName">@(surface.Request?.FileName ?? Request?.FileName ?? "File")</strong>
+                </div>
+            }
 
-        @if (OpenExternallyRequested.HasDelegate)
-        {
-            FileInteractionRequest externalOpenRequest = Request!;
-            <button type="button"
-                    class="cdi-ft-interaction__open-externally"
-                    data-testid="interaction-open-externally"
-                    @onclick="() => RequestExternalOpenAsync(externalOpenRequest)">@OpenExternallyLabel.Trim()</button>
-        }
+            @if (OpenExternallyRequested.HasDelegate) {
+                FileInteractionRequest externalOpenRequest = Request!;
+                <button type="button"
+                        class="cdi-ft-interaction__open-externally"
+                        data-testid="interaction-open-externally"
+                        @onclick="() => RequestExternalOpenAsync(externalOpenRequest)">@OpenExternallyLabel.Trim()</button>
+            }
 
-        <div class="cdi-ft-interaction__modes" role="group" aria-label="Interaction mode">
-            <button type="button"
-                    aria-pressed="@(surface.Mode == FileInteractionMode.View ? "true" : "false")"
-                    disabled="@(!CanUseMode(FileInteractionMode.View))"
-                    data-testid="interaction-mode-view"
-                    @onclick="() => ChangeModeAsync(FileInteractionMode.View)">View</button>
-            <button type="button"
-                    aria-pressed="@(surface.Mode == FileInteractionMode.Edit ? "true" : "false")"
-                    disabled="@(!CanUseMode(FileInteractionMode.Edit))"
-                    data-testid="interaction-mode-edit"
-                    @onclick="() => ChangeModeAsync(FileInteractionMode.Edit)">Edit</button>
-            <button type="button"
-                    aria-pressed="@(surface.Mode == FileInteractionMode.Diff ? "true" : "false")"
-                    disabled="@(!CanUseMode(FileInteractionMode.Diff))"
-                    title="A diff renderer can be registered by an optional package or host."
-                    data-testid="interaction-mode-diff"
-                    @onclick="() => ChangeModeAsync(FileInteractionMode.Diff)">Diff</button>
-        </div>
+            @if (showModes) {
+                <div class="cdi-ft-interaction__modes" role="group" aria-label="Interaction mode">
+                    @foreach (var mode in ToolbarModes) {
+                        bool available = CanUseMode(mode);
+                        if (Embedded && !available && mode != surface.Mode) {
+                            continue;
+                        }
+                        <button type="button" aria-pressed="@(surface.Mode == mode ? "true" : "false")"
+                                disabled="@(!available)" data-testid="@($"interaction-mode-{mode.ToString().ToLowerInvariant()}")"
+                                title="@(mode == FileInteractionMode.Diff ? "A diff renderer can be registered by an optional package or host." : null)"
+                                @onclick="() => ChangeModeAsync(mode)">@mode</button>
+                    }
+                </div>
+            }
 
-        @if (surface.Mode == FileInteractionMode.Edit && editing is not null)
-        {
-            <div class="cdi-ft-interaction__edit-tools" aria-label="Editing actions">
-                <button type="button" disabled="@(!editing.CanUndo)"
-                        data-testid="interaction-undo" @onclick="editCommands.UndoAsync">Undo</button>
-                <button type="button" disabled="@(!editing.CanRedo)"
-                        data-testid="interaction-redo" @onclick="editCommands.RedoAsync">Redo</button>
-                <button type="button" disabled="@(editing.Preview is null)"
-                        aria-pressed="@(showPreview ? "true" : "false")"
-                        data-testid="interaction-preview-toggle"
-                        @onclick="TogglePreview">Preview</button>
-                <button type="button" class="cdi-ft-interaction__save"
-                        disabled="@(!saveUi.CanSave(editing, SaveRequested.HasDelegate))"
-                        data-testid="interaction-save" @onclick="editCommands.SaveAsync">Save</button>
-            </div>
-        }
+            @if (editor is not null) {
+                <div class="cdi-ft-interaction__edit-tools" aria-label="Editing actions">
+                    <button type="button" disabled="@(!editor.CanUndo)"
+                            data-testid="interaction-undo" @onclick="editCommands.UndoAsync">Undo</button>
+                    <button type="button" disabled="@(!editor.CanRedo)"
+                            data-testid="interaction-redo" @onclick="editCommands.RedoAsync">Redo</button>
+                    <button type="button" disabled="@(editor.Preview is null)"
+                            aria-pressed="@(showPreview ? "true" : "false")"
+                            data-testid="interaction-preview-toggle"
+                            @onclick="TogglePreview">Preview</button>
+                    <button type="button" class="cdi-ft-interaction__save"
+                            disabled="@(!saveUi.CanSave(editor, SaveRequested.HasDelegate))"
+                            data-testid="interaction-save" @onclick="editCommands.SaveAsync">Save</button>
+                </div>
+            }
 
-        <div class="cdi-ft-interaction__status" role="status" aria-live="polite"
-             data-testid="interaction-save-status">@saveUi.Status(editing, SaveRequested.HasDelegate, surface.Mode)</div>
-    </header>
+            @if (!Embedded || surface.Mode == FileInteractionMode.Edit) {
+                <div class="cdi-ft-interaction__status" role="status" aria-live="polite"
+                     data-testid="interaction-save-status">@saveUi.Status(editing, SaveRequested.HasDelegate, surface.Mode)</div>
+            }
+        </header>
+    }
 
     @if (surface.State == FileInteractionLoadState.Loading)
     {
